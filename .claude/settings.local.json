@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "WebSearch",
+      "Bash(command -v:*)",
+      "Bash(gemini -p \"You are a backend architecture expert. Provide a comprehensive guide for structuring a Supabase database for a crypto bill payment platform in 2025. Include:\n\n1. Recommended database schema with tables for:\n   - Bills (with status: draft, pending_approval, approved, paid, rejected)\n   - Users (with roles: admin, user, payer)\n   - Transactions (crypto payment tracking)\n   - Platform Settings\n   - Bill Attachments\n\n2. Key design decisions:\n   - Primary keys, foreign keys, indexes\n   - Timestamp fields (created_at, updated_at, deleted_at for soft deletes)\n   - Enum types vs string fields\n   - Normalization strategy\n\n3. Row-Level Security (RLS) patterns:\n   - Admin can see all bills\n   - Users can only see their own bills\n   - Payers can only see bills they''re paying\n   - Public users can see payment instructions\n\n4. Best practices for 2025:\n   - Real-time subscriptions for bill updates\n   - Audit trail implementation\n   - Data validation patterns\n\nFormat the response with clear SQL examples and explanations.\")",
+      "Bash(gemini -p \"Provide a detailed guide on integrating Supabase with Web3 cryptocurrency wallets for a bill payment platform. Include:\n\n1. Best practices for storing cryptocurrency data:\n   - Wallet address storage (should they be encrypted?)\n   - Private key handling (DO NOT store - explain why)\n   - Transaction hash storage and verification\n   - Token type handling (Bitcoin, Ethereum, Polygon, Tron)\n\n2. Authentication flow:\n   - Wallet connection methods (MetaMask, WalletConnect, etc)\n   - Message signing for authentication (EIP-191)\n   - Linking wallet addresses to Supabase auth\n   - Rate limiting for transaction verification\n\n3. Transaction tracking:\n   - Recording pending transactions\n   - Webhook/polling strategies for confirmation\n   - Storing transaction metadata (gas fees, slippage, etc)\n   - Handling failed/reversed transactions\n\n4. Security considerations:\n   - Preventing replay attacks\n   - Validating blockchain state\n   - Rate limiting and fraud detection\n   - Audit logs for all crypto operations\n\n5. Code patterns:\n   - TypeScript interfaces for crypto data\n   - Error handling for blockchain interactions\n   - Testing strategies\n\nFormat with code examples and security warnings.\")",
+      "Bash(tree:*)",
+      "Bash(gemini -p \"Create a comprehensive guide for Supabase authentication and authorization in 2025, specifically for a bill payment platform with role-based access. Include:\n\n1. Setup process:\n   - Email/password authentication\n   - Creating custom claims for roles (admin, user, payer)\n   - JWT token customization\n\n2. Role-based access control (RBAC):\n   - How to implement admin, user, and payer roles\n   - Custom middleware for role enforcement\n   - Token refresh and expiration strategies\n\n3. Row-level security (RLS) policies:\n   - Example policies for bills table\n   - Example policies for transactions table\n   - Multi-tenant security patterns\n   - Testing RLS policies\n\n4. Frontend implementation:\n   - Session management in React\n   - Protecting routes based on roles\n   - Handling authentication state\n   - Logout and cleanup\n\n5. Security best practices:\n   - HTTPS requirements\n   - CORS configuration\n   - Rate limiting\n   - Session timeout strategies\n   - Detecting unauthorized access\n\nProvide TypeScript code examples and architecture diagrams where helpful.\")",
+      "Bash(for file in \".gitignore\" \"README.md\" \"index.html\" \"package.json\" \"package-lock.json\" \"vite.config.js\" \"postcss.config.js\" \"tailwind.config.js\")",
+      "Bash(do)",
+      "Bash(if [ -f \"/home/elmigguel/BillHaven/$file\" ])",
+      "Bash(then)",
+      "Bash(echo:*)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(for dir in \"src\" \"public\" \"node_modules\")",
+      "Bash(if [ -d \"/home/elmigguel/BillHaven/$dir\" ])",
+      "Bash(gemini:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker system:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(pip3 cache purge:*)",
+      "Bash(ln:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

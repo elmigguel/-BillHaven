@@ -1,0 +1,103 @@
+{
+  "name": "Bill",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Brief description of the bill"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Bill amount in USD"
+    },
+    "fee_percentage": {
+      "type": "number",
+      "description": "Fee percentage applied"
+    },
+    "fee_amount": {
+      "type": "number",
+      "description": "Fee amount in USD"
+    },
+    "payout_amount": {
+      "type": "number",
+      "description": "Amount to be paid out after fee"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "rent",
+        "food",
+        "utilities",
+        "transport",
+        "healthcare",
+        "entertainment",
+        "other"
+      ],
+      "default": "other",
+      "description": "Bill category"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description or notes"
+    },
+    "proof_image_url": {
+      "type": "string",
+      "description": "URL to the uploaded bill/receipt image"
+    },
+    "crypto_wallet_address": {
+      "type": "string",
+      "description": "Crypto wallet address for reimbursement"
+    },
+    "crypto_currency": {
+      "type": "string",
+      "enum": [
+        "BTC",
+        "ETH",
+        "USDT",
+        "USDC",
+        "LTC",
+        "SOL"
+      ],
+      "default": "USDT",
+      "description": "Preferred cryptocurrency"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "claimed",
+        "paid",
+        "rejected",
+        "cancelled"
+      ],
+      "default": "pending",
+      "description": "Bill status"
+    },
+    "claimed_by": {
+      "type": "string",
+      "description": "Email of user who claimed to pay this bill"
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the bill was claimed"
+    },
+    "payer_wallet_address": {
+      "type": "string",
+      "description": "Wallet address of the payer"
+    },
+    "reviewer_notes": {
+      "type": "string",
+      "description": "Notes from the reviewer/approver"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Blockchain transaction hash for proof of payment"
+    }
+  },
+  "required": [
+    "title",
+    "amount",
+    "category"
+  ]
+}

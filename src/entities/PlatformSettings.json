@@ -1,0 +1,26 @@
+{
+  "name": "PlatformSettings",
+  "type": "object",
+  "properties": {
+    "fee_wallet_address": {
+      "type": "string",
+      "description": "Wallet address where platform fees are sent"
+    },
+    "fee_wallet_currency": {
+      "type": "string",
+      "enum": [
+        "BTC",
+        "ETH",
+        "USDT",
+        "USDC",
+        "LTC",
+        "SOL"
+      ],
+      "default": "USDT",
+      "description": "Preferred cryptocurrency for fees"
+    }
+  },
+  "required": [
+    "fee_wallet_address"
+  ]
+}
