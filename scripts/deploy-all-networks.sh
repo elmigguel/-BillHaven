@@ -61,8 +61,8 @@ networks=(
   ["bsc"]="56|BSC|~\$0.20-1.00"
 )
 
-# Deploy to L2s and cheaper networks first
-cheap_networks=("arbitrum" "optimism" "base" "polygon" "bsc")
+# Deploy to L2s and cheaper networks first (Base is cheapest, then L2s, then others)
+cheap_networks=("base" "arbitrum" "optimism" "polygon" "bsc")
 
 echo "=========================================="
 echo "Deploying to low-cost networks first"

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './Layout.jsx';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -34,9 +35,10 @@ window.createPageUrl = (pageName) => pageUrlMap[pageName] || '/';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
           {/* Public routes */}
           <Route path={window.createPageUrl('Home')} element={<Layout><Home /></Layout>} />
           <Route path={window.createPageUrl('Login')} element={<Login />} />
@@ -100,8 +102,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

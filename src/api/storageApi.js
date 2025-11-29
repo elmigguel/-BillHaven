@@ -17,14 +17,18 @@ export const storageApi = {
 
     if (error) throw error
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
+    // Get public URL - FIX: Add null check
+    const { data: urlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(data.path)
 
+    if (!urlData?.publicUrl) {
+      throw new Error('Failed to generate public URL for uploaded file')
+    }
+
     return {
       path: data.path,
-      url: publicUrl
+      url: urlData.publicUrl
     }
   },
 

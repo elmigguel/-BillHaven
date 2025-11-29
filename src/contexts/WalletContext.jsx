@@ -6,7 +6,7 @@
  * Uses ethers.js v6 for blockchain interaction.
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { ethers } from 'ethers'
 import { NETWORKS, MAINNET_CHAINS, TESTNET_CHAINS, getEscrowAddress } from '../config/contracts'
 
@@ -26,7 +26,14 @@ export const WalletProvider = ({ children }) => {
   const [walletType, setWalletType] = useState(null)
 
   // Debounce timer to prevent rapid-fire event handling
-  const reinitTimerRef = React.useRef(null)
+  const reinitTimerRef = useRef(null)
+
+  // FIX: Use refs for stable event handler references to prevent memory leaks
+  const handlersRef = useRef({
+    accountsChanged: null,
+    chainChanged: null,
+    disconnect: null
+  })
 
   // Shared re-initialization logic to prevent race conditions
   // Debounced to handle rapid chainChanged + accountsChanged events
@@ -89,20 +96,30 @@ export const WalletProvider = ({ children }) => {
           console.error('Error initializing wallet:', err)
         }
 
-        // Listen for account changes
-        window.ethereum.on('accountsChanged', handleAccountsChanged)
-        window.ethereum.on('chainChanged', handleChainChanged)
-        window.ethereum.on('disconnect', handleDisconnect)
+        // FIX: Store handlers in ref for stable references (prevents memory leak)
+        handlersRef.current.accountsChanged = handleAccountsChanged
+        handlersRef.current.chainChanged = handleChainChanged
+        handlersRef.current.disconnect = handleDisconnect
+
+        // Listen for account changes using stable refs
+        window.ethereum.on('accountsChanged', handlersRef.current.accountsChanged)
+        window.ethereum.on('chainChanged', handlersRef.current.chainChanged)
+        window.ethereum.on('disconnect', handlersRef.current.disconnect)
       }
     }
 
     init()
 
     return () => {
-      if (window.ethereum?.removeListener) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
-        window.ethereum.removeListener('chainChanged', handleChainChanged)
-        window.ethereum.removeListener('disconnect', handleDisconnect)
+      // FIX: Use the same handler refs for proper cleanup
+      if (window.ethereum?.removeListener && handlersRef.current) {
+        window.ethereum.removeListener('accountsChanged', handlersRef.current.accountsChanged)
+        window.ethereum.removeListener('chainChanged', handlersRef.current.chainChanged)
+        window.ethereum.removeListener('disconnect', handlersRef.current.disconnect)
+      }
+      // Clean up debounce timer
+      if (reinitTimerRef.current) {
+        clearTimeout(reinitTimerRef.current)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,13 @@ export default function PaymentFlow({
   const [isProcessing, setIsProcessing] = useState(false);
   const [escrowClaimTxHash, setEscrowClaimTxHash] = useState(null);
   const [escrowError, setEscrowError] = useState(null);
+
+  // FIX: Sync payerWalletAddress when wallet changes (prevents stale address issue)
+  useEffect(() => {
+    if (walletAddress && !payerWalletAddress) {
+      setPayerWalletAddress(walletAddress);
+    }
+  }, [walletAddress, payerWalletAddress]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -140,6 +147,7 @@ export default function PaymentFlow({
     setProofFile(null);
     setEscrowClaimTxHash(null);
     setEscrowError(null);
+    setIsProcessing(false); // FIX: Reset processing state to prevent stuck UI
     onClose();
   };
 

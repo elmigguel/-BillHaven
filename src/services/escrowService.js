@@ -130,11 +130,20 @@ export const escrowService = {
 
     let approvalTxHash = null;
 
-    // Approve if needed
+    // Approve if needed - FIX: Add proper error handling for approval
     if (currentAllowance < totalAmount) {
-      const approveTx = await tokenContract.approve(escrowAddress, totalAmount);
-      const approvalReceipt = await approveTx.wait();
-      approvalTxHash = approvalReceipt.hash;
+      try {
+        const approveTx = await tokenContract.approve(escrowAddress, totalAmount);
+        const approvalReceipt = await approveTx.wait();
+        approvalTxHash = approvalReceipt.hash;
+      } catch (approvalError) {
+        // Handle user rejection specifically
+        if (approvalError.code === 'ACTION_REJECTED' || approvalError.code === 4001) {
+          throw new Error('Token approval rejected. Bill creation cancelled.');
+        }
+        // Handle other approval errors
+        throw new Error(`Token approval failed: ${approvalError.message || 'Unknown error'}`);
+      }
     }
 
     // Create bill with token
