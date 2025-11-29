@@ -23,6 +23,9 @@ const ERC20_ABI = [
   "function symbol() view returns (string)"
 ];
 
+// Cache for token decimals to avoid repeated contract calls
+const decimalsCache = new Map();
+
 export const escrowService = {
   /**
    * Get V2 contract instance with signer (for write operations)
@@ -285,15 +288,20 @@ export const escrowService = {
 
     // V2 includes token address, V1 does not
     const isNativeToken = bill.token === ethers.ZeroAddress || !bill.token;
-    const decimals = isNativeToken ? 18 : 6; // Native tokens use 18, stablecoins use 6
+
+    // Get actual token decimals (native = 18, ERC20 = fetch from contract)
+    let decimals = 18; // Default for native tokens
+    if (!isNativeToken) {
+      decimals = await this.getTokenDecimals(provider, bill.token);
+    }
 
     return {
       billMaker: bill.billMaker,
       payer: bill.payer,
       token: bill.token || ethers.ZeroAddress,
       isNativeToken,
-      amount: isNativeToken ? ethers.formatEther(bill.amount) : ethers.formatUnits(bill.amount, decimals),
-      platformFee: isNativeToken ? ethers.formatEther(bill.platformFee) : ethers.formatUnits(bill.platformFee, decimals),
+      amount: ethers.formatUnits(bill.amount, decimals),
+      platformFee: ethers.formatUnits(bill.platformFee, decimals),
       fiatConfirmed: bill.fiatConfirmed,
       disputed: bill.disputed,
       createdAt: Number(bill.createdAt),
@@ -358,23 +366,53 @@ export const escrowService = {
   // ============ Helper Functions ============
 
   /**
+   * Get token decimals from contract (with caching)
+   * @param {ethers.Provider} provider - Provider instance
+   * @param {string} tokenAddress - Token contract address
+   * @returns {Promise<number>} Token decimals
+   */
+  async getTokenDecimals(provider, tokenAddress) {
+    // Check cache first
+    const cacheKey = `${tokenAddress.toLowerCase()}`;
+    if (decimalsCache.has(cacheKey)) {
+      return decimalsCache.get(cacheKey);
+    }
+
+    // Fetch from contract
+    const tokenContract = this.getTokenContract(tokenAddress, provider);
+    const decimals = await tokenContract.decimals();
+    const decimalsNum = Number(decimals);
+
+    // Cache it
+    decimalsCache.set(cacheKey, decimalsNum);
+    return decimalsNum;
+  },
+
+  /**
    * Calculate platform fee based on amount
-   * Uses tiered fee structure from BillHaven
+   * Uses tiered fee structure matching FeeCalculator.jsx
+   *
+   * Tier Structure (USD equivalent):
+   * - Under $10,000:      4.4%
+   * - $10,000 - $20,000:  3.5%
+   * - $20,000 - $100,000: 2.6%
+   * - $100,000 - $1M:     1.7%
+   * - Over $1,000,000:    0.8%
    */
   calculateFee(amount) {
     const numAmount = parseFloat(amount) || 0;
     let feePercentage;
 
-    if (numAmount >= 5000) {
-      feePercentage = 0.008; // 0.8%
-    } else if (numAmount >= 1000) {
-      feePercentage = 0.014; // 1.4%
-    } else if (numAmount >= 500) {
-      feePercentage = 0.024; // 2.4%
-    } else if (numAmount >= 100) {
-      feePercentage = 0.034; // 3.4%
+    if (numAmount >= 1000000) {
+      feePercentage = 0.008; // 0.8% - Enterprise tier
+    } else if (numAmount >= 100000) {
+      feePercentage = 0.017; // 1.7% - Business tier
+    } else if (numAmount >= 20000) {
+      feePercentage = 0.026; // 2.6% - Professional tier
+    } else if (numAmount >= 10000) {
+      feePercentage = 0.035; // 3.5% - Growth tier
     } else {
-      feePercentage = 0.044; // 4.4%
+      feePercentage = 0.044; // 4.4% - Standard tier
     }
 
     const feeAmount = numAmount * feePercentage;

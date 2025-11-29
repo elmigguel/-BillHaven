@@ -33,6 +33,13 @@ const TOKEN_METADATA = {
     decimals: 6,
     icon: Coins,
     color: 'bg-blue-500'
+  },
+  WBTC: {
+    symbol: 'WBTC',
+    name: 'Wrapped Bitcoin',
+    decimals: 8,
+    icon: Coins,
+    color: 'bg-orange-500'
   }
 }
 
@@ -81,7 +88,7 @@ export function TokenSelector({
           }
         ]
 
-        // Add stablecoins if available
+        // Add stablecoins and WBTC if available
         if (stablecoins) {
           if (stablecoins.USDT) {
             tokenList.push({
@@ -101,6 +108,16 @@ export function TokenSelector({
               name: 'USD Coin',
               decimals: 6,
               color: 'bg-blue-500'
+            })
+          }
+          if (stablecoins.WBTC) {
+            tokenList.push({
+              type: 'WBTC',
+              address: stablecoins.WBTC,
+              symbol: 'WBTC',
+              name: 'Wrapped Bitcoin',
+              decimals: 8,
+              color: 'bg-orange-500'
             })
           }
         }

@@ -1,13 +1,17 @@
 /**
  * WalletContext - Web3 Wallet Connection Provider
  *
- * Provides wallet connection state and methods for the entire app.
+ * Multi-chain support for all EVM networks like Uniswap/1inch.
+ * Supports: Polygon, Ethereum, BSC, Arbitrum, Optimism, Base + testnets.
  * Uses ethers.js v6 for blockchain interaction.
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { ethers } from 'ethers'
-import { POLYGON_MAINNET, POLYGON_AMOY } from '../config/contracts'
+import { NETWORKS, MAINNET_CHAINS, TESTNET_CHAINS, getEscrowAddress } from '../config/contracts'
+
+// All supported chain IDs (mainnets + testnets)
+const ALL_SUPPORTED_CHAINS = [...MAINNET_CHAINS, ...TESTNET_CHAINS]
 
 const WalletContext = createContext(null)
 
@@ -20,6 +24,46 @@ export const WalletProvider = ({ children }) => {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState(null)
   const [walletType, setWalletType] = useState(null)
+
+  // Debounce timer to prevent rapid-fire event handling
+  const reinitTimerRef = React.useRef(null)
+
+  // Shared re-initialization logic to prevent race conditions
+  // Debounced to handle rapid chainChanged + accountsChanged events
+  const reinitializeProvider = useCallback(async () => {
+    if (typeof window.ethereum === 'undefined') return
+
+    // Clear any pending reinitialization
+    if (reinitTimerRef.current) {
+      clearTimeout(reinitTimerRef.current)
+    }
+
+    // Debounce: wait 100ms for rapid-fire events to settle
+    reinitTimerRef.current = setTimeout(async () => {
+      try {
+        const ethProvider = new ethers.BrowserProvider(window.ethereum)
+        const accounts = await ethProvider.listAccounts()
+
+        if (accounts.length > 0) {
+          const network = await ethProvider.getNetwork()
+          const ethSigner = await ethProvider.getSigner()
+
+          // Atomic state update - prevents race conditions
+          setProvider(ethProvider)
+          setSigner(ethSigner)
+          setWalletAddress(accounts[0].address)
+          setChainId(Number(network.chainId))
+          setIsConnected(true)
+        } else {
+          // No accounts means disconnected
+          disconnect()
+        }
+      } catch (err) {
+        console.error('Error reinitializing provider:', err)
+        setError(`Provider reinitialization failed: ${err.message}`)
+      }
+    }, 100)
+  }, [])
 
   // Initialize provider and check existing connection
   useEffect(() => {
@@ -55,33 +99,45 @@ export const WalletProvider = ({ children }) => {
     init()
 
     return () => {
-      if (window.ethereum) {
+      if (window.ethereum?.removeListener) {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
         window.ethereum.removeListener('chainChanged', handleChainChanged)
         window.ethereum.removeListener('disconnect', handleDisconnect)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Handle account changes
+  // Note: accountsChanged fires when user switches accounts OR disconnects
   const handleAccountsChanged = useCallback(async (accounts) => {
+    console.log('🔄 Account changed:', accounts)
+
     if (accounts.length === 0) {
+      // User disconnected all accounts
       disconnect()
-    } else {
-      setWalletAddress(accounts[0])
-      if (provider) {
-        const ethSigner = await provider.getSigner()
-        setSigner(ethSigner)
-      }
+    } else if (accounts[0] !== walletAddress) {
+      // Account actually changed - use shared reinitialization
+      // This prevents race conditions with chainChanged
+      await reinitializeProvider()
     }
-  }, [provider])
+    // If accounts[0] === walletAddress, it's a redundant event - ignore
+  }, [walletAddress, reinitializeProvider])
 
   // Handle chain changes
-  const handleChainChanged = useCallback((newChainId) => {
-    setChainId(parseInt(newChainId, 16))
-    // Reload to reset provider state
-    window.location.reload()
-  }, [])
+  // Note: MetaMask fires chainChanged when network switches
+  // This can fire simultaneously with accountsChanged - use shared logic
+  const handleChainChanged = useCallback(async (newChainId) => {
+    const parsedChainId = parseInt(newChainId, 16)
+    console.log('⛓️  Chain changed:', parsedChainId)
+
+    // Use shared reinitialization to prevent race conditions
+    // This handles provider + signer + accounts atomically
+    await reinitializeProvider()
+
+    // Clear any previous errors on successful switch
+    setError(null)
+  }, [reinitializeProvider])
 
   // Handle disconnect
   const handleDisconnect = useCallback(() => {
@@ -129,10 +185,8 @@ export const WalletProvider = ({ children }) => {
       setIsConnected(true)
       detectWalletType()
 
-      // Auto-switch to Polygon Amoy if on wrong network
-      if (Number(network.chainId) !== 80002 && Number(network.chainId) !== 137) {
-        await switchNetwork(80002) // Default to testnet
-      }
+      // Multi-chain: Don't auto-switch, let user choose network
+      // Show warning if on unsupported network (handled in UI)
     } catch (err) {
       if (err.code === 4001) {
         setError('Connection rejected by user')
@@ -155,14 +209,20 @@ export const WalletProvider = ({ children }) => {
     setError(null)
   }, [])
 
-  // Switch network
+  // Switch network - supports all EVM chains
   const switchNetwork = useCallback(async (targetChainId) => {
     if (!window.ethereum) {
       setError('Wallet not available')
       return false
     }
 
-    const targetConfig = targetChainId === 137 ? POLYGON_MAINNET : POLYGON_AMOY
+    // Get network config from NETWORKS (supports all chains)
+    const targetConfig = NETWORKS[targetChainId]
+
+    if (!targetConfig) {
+      setError(`Network ${targetChainId} not supported`)
+      return false
+    }
 
     try {
       await window.ethereum.request({
@@ -172,7 +232,7 @@ export const WalletProvider = ({ children }) => {
       setChainId(targetChainId)
       return true
     } catch (switchError) {
-      // Network not added, try to add it
+      // Network not added to wallet, try to add it
       if (switchError.code === 4902) {
         try {
           await window.ethereum.request({
@@ -188,26 +248,41 @@ export const WalletProvider = ({ children }) => {
           setChainId(targetChainId)
           return true
         } catch (addError) {
-          setError('Failed to add network')
+          setError(`Failed to add ${targetConfig.name}`)
           return false
         }
       } else {
-        setError('Failed to switch network')
+        setError(`Failed to switch to ${targetConfig.name}`)
         return false
       }
     }
   }, [])
 
-  // Get network name
+  // Get network name - supports all chains
   const getNetworkName = useCallback(() => {
-    if (chainId === 137) return 'Polygon Mainnet'
-    if (chainId === 80002) return 'Polygon Amoy'
-    return 'Unknown Network'
+    const network = NETWORKS[chainId]
+    if (network) return network.name
+    return 'Unsupported Network'
   }, [chainId])
 
-  // Check if on correct network
+  // Get current network config
+  const getNetworkConfig = useCallback(() => {
+    return NETWORKS[chainId] || null
+  }, [chainId])
+
+  // Check if on supported network (any of our 11 networks)
   const isCorrectNetwork = useCallback(() => {
-    return chainId === 137 || chainId === 80002
+    return ALL_SUPPORTED_CHAINS.includes(chainId)
+  }, [chainId])
+
+  // Check if escrow contract is deployed on current network
+  const hasEscrowContract = useCallback(() => {
+    return !!getEscrowAddress(chainId)
+  }, [chainId])
+
+  // Check if current network is testnet
+  const isTestnet = useCallback(() => {
+    return TESTNET_CHAINS.includes(chainId)
   }, [chainId])
 
   // Format address for display
@@ -216,14 +291,16 @@ export const WalletProvider = ({ children }) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`
   }, [])
 
-  // Get block explorer URL
+  // Get block explorer URL - supports all chains
   const getExplorerUrl = useCallback((type, hash) => {
-    const baseUrl = chainId === 137
-      ? 'https://polygonscan.com'
-      : 'https://amoy.polygonscan.com'
+    const network = NETWORKS[chainId]
+    if (!network) return '#'
+
+    const baseUrl = network.blockExplorer
 
     if (type === 'tx') return `${baseUrl}/tx/${hash}`
     if (type === 'address') return `${baseUrl}/address/${hash}`
+    if (type === 'token') return `${baseUrl}/token/${hash}`
     return baseUrl
   }, [chainId])
 
@@ -243,9 +320,17 @@ export const WalletProvider = ({ children }) => {
     disconnect,
     switchNetwork,
     getNetworkName,
+    getNetworkConfig,
     isCorrectNetwork,
+    hasEscrowContract,
+    isTestnet,
     formatAddress,
     getExplorerUrl,
+
+    // Constants (for UI components)
+    supportedChains: ALL_SUPPORTED_CHAINS,
+    mainnetChains: MAINNET_CHAINS,
+    testnetChains: TESTNET_CHAINS,
   }
 
   return (

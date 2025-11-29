@@ -19,10 +19,26 @@ import {
 import { Badge } from '../ui/badge'
 import { Wallet, Copy, ExternalLink, LogOut, AlertCircle, Check, ChevronDown } from 'lucide-react'
 
+// ALL supported networks - Multi-chain support like Uniswap/1inch
 const SUPPORTED_NETWORKS = {
-  80002: { name: 'Polygon Amoy', shortName: 'Amoy', color: 'bg-blue-500', type: 'testnet' },
-  137: { name: 'Polygon Mainnet', shortName: 'Mainnet', color: 'bg-purple-500', type: 'mainnet' },
+  // ============ MAINNETS ============
+  137: { name: 'Polygon', shortName: 'MATIC', color: 'bg-purple-500', type: 'mainnet', icon: '🟣' },
+  1: { name: 'Ethereum', shortName: 'ETH', color: 'bg-blue-600', type: 'mainnet', icon: '⟠' },
+  56: { name: 'BNB Chain', shortName: 'BNB', color: 'bg-yellow-500', type: 'mainnet', icon: '🟡' },
+  42161: { name: 'Arbitrum', shortName: 'ARB', color: 'bg-blue-400', type: 'mainnet', icon: '🔵' },
+  10: { name: 'Optimism', shortName: 'OP', color: 'bg-red-500', type: 'mainnet', icon: '🔴' },
+  8453: { name: 'Base', shortName: 'BASE', color: 'bg-blue-500', type: 'mainnet', icon: '🔷' },
+  // ============ TESTNETS ============
+  80002: { name: 'Polygon Amoy', shortName: 'Amoy', color: 'bg-purple-400', type: 'testnet', icon: '🟣' },
+  11155111: { name: 'Sepolia', shortName: 'SEP', color: 'bg-blue-400', type: 'testnet', icon: '⟠' },
+  97: { name: 'BSC Testnet', shortName: 'tBNB', color: 'bg-yellow-400', type: 'testnet', icon: '🟡' },
+  421614: { name: 'Arbitrum Sepolia', shortName: 'tARB', color: 'bg-blue-300', type: 'testnet', icon: '🔵' },
+  84532: { name: 'Base Sepolia', shortName: 'tBASE', color: 'bg-blue-300', type: 'testnet', icon: '🔷' },
 }
+
+// Separate mainnets and testnets for UI
+const MAINNET_CHAINS = [137, 1, 56, 42161, 10, 8453]
+const TESTNET_CHAINS = [80002, 11155111, 97, 421614, 84532]
 
 export default function ConnectWalletButton() {
   const {
@@ -149,28 +165,47 @@ export default function ConnectWalletButton() {
 
           <DropdownMenuSeparator />
 
-          {/* Network Switching */}
+          {/* Network Switching - MAINNETS */}
           <DropdownMenuLabel className="text-xs text-muted-foreground">
-            Switch Network
+            Mainnets
           </DropdownMenuLabel>
 
-          <DropdownMenuItem
-            onClick={() => switchNetwork(80002)}
-            className={`cursor-pointer ${chainId === 80002 ? 'bg-blue-50' : ''}`}
-          >
-            <div className="w-2 h-2 rounded-full bg-blue-500 mr-2" />
-            Polygon Amoy (Testnet)
-            {chainId === 80002 && <Check className="w-4 h-4 ml-auto text-blue-500" />}
-          </DropdownMenuItem>
+          {MAINNET_CHAINS.map((netId) => {
+            const network = SUPPORTED_NETWORKS[netId]
+            return (
+              <DropdownMenuItem
+                key={netId}
+                onClick={() => switchNetwork(netId)}
+                className={`cursor-pointer ${chainId === netId ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
+              >
+                <span className="mr-2">{network.icon}</span>
+                {network.name}
+                {chainId === netId && <Check className="w-4 h-4 ml-auto text-green-500" />}
+              </DropdownMenuItem>
+            )
+          })}
 
-          <DropdownMenuItem
-            onClick={() => switchNetwork(137)}
-            className={`cursor-pointer ${chainId === 137 ? 'bg-purple-50' : ''}`}
-          >
-            <div className="w-2 h-2 rounded-full bg-purple-500 mr-2" />
-            Polygon Mainnet
-            {chainId === 137 && <Check className="w-4 h-4 ml-auto text-purple-500" />}
-          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+
+          {/* Network Switching - TESTNETS */}
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            Testnets (Free)
+          </DropdownMenuLabel>
+
+          {TESTNET_CHAINS.map((netId) => {
+            const network = SUPPORTED_NETWORKS[netId]
+            return (
+              <DropdownMenuItem
+                key={netId}
+                onClick={() => switchNetwork(netId)}
+                className={`cursor-pointer ${chainId === netId ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
+              >
+                <span className="mr-2">{network.icon}</span>
+                {network.name}
+                {chainId === netId && <Check className="w-4 h-4 ml-auto text-green-500" />}
+              </DropdownMenuItem>
+            )
+          })}
 
           <DropdownMenuSeparator />
 

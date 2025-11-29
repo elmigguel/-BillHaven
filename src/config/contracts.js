@@ -6,23 +6,25 @@
 // Contract addresses per network (V2 with ERC20 support)
 // Update these after deploying to each network
 export const ESCROW_ADDRESSES = {
-  // ============ MAINNETS ============
-  // Polygon Mainnet - PRIORITY (lowest fees)
+  // ============ MAINNETS - UPDATE AFTER DEPLOYMENT ============
+  // Deploy with: npx hardhat run scripts/deploy-v2.cjs --network <network-name>
+
+  // Polygon Mainnet - DEPLOY FIRST (cheapest gas: $0.01-$0.10)
   137: "",
 
-  // Ethereum Mainnet - Premium (high fees)
+  // Ethereum Mainnet - Deploy last (highest gas: $5-$25)
   1: "",
 
-  // BSC Mainnet - Fast & cheap
+  // BSC Mainnet - Fast & cheap (gas: $0.02-$0.15)
   56: "",
 
-  // Arbitrum One - L2 (very low fees)
+  // Arbitrum One - L2 rollup (very low gas: $0.01-$0.08)
   42161: "",
 
-  // Optimism Mainnet - L2 (very low fees)
+  // Optimism Mainnet - L2 rollup (very low gas: $0.01-$0.08)
   10: "",
 
-  // Base Mainnet - Coinbase L2 (very low fees)
+  // Base Mainnet - Coinbase L2 (lowest gas: $0.01-$0.05)
   8453: "",
 
   // ============ TESTNETS ============
@@ -50,43 +52,114 @@ export const getEscrowAddress = (chainId) => {
   return ESCROW_ADDRESSES[chainId] || "";
 };
 
-// Stablecoin addresses per network
-export const STABLECOINS = {
+// Supported token addresses per network (Stablecoins + WBTC)
+// All addresses verified from official sources (Circle, Tether, WBTC, block explorers)
+export const SUPPORTED_TOKENS = {
   // Polygon Mainnet
   137: {
-    USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
-    USDC: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+    USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", // Tether USDT (6 decimals)
+    USDC: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", // Circle Native USDC (6 decimals, NOT USDC.e)
+    WBTC: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"  // Wrapped Bitcoin (8 decimals)
   },
   // Ethereum Mainnet
   1: {
-    USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-    USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // Tether USDT (6 decimals)
+    USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // Circle USDC (6 decimals)
+    WBTC: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"  // Wrapped Bitcoin (8 decimals)
   },
   // BSC Mainnet
   56: {
-    USDT: "0x55d398326f99059fF775485246999027B3197955",
-    USDC: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+    USDT: "0x55d398326f99059fF775485246999027B3197955", // Binance-Peg USDT (18 decimals)
+    USDC: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", // Binance-Peg USDC (18 decimals)
+    WBTC: "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c"  // BTCB - Binance wrapped (18 decimals)
   },
   // Arbitrum One
   42161: {
-    USDT: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
-    USDC: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+    USDT: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", // Bridged USDT (6 decimals)
+    USDC: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // Circle Native USDC (6 decimals, NOT USDC.e)
+    WBTC: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f"  // Wrapped Bitcoin (8 decimals)
   },
   // Optimism
   10: {
-    USDT: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
-    USDC: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
+    USDT: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", // Bridged USDT (6 decimals)
+    USDC: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", // Circle Native USDC (6 decimals, NOT USDC.e)
+    WBTC: "0x68f180fcCe6836688e9084f035309E29Bf0A2095"  // Wrapped Bitcoin (8 decimals)
   },
-  // Base (no USDT)
+  // Base (no USDT on Base)
   8453: {
-    USDT: null,
-    USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+    USDT: null, // Not available on Base
+    USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Circle Native USDC (6 decimals)
+    WBTC: "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c"  // Wrapped Bitcoin (8 decimals)
   }
 };
 
-// Get stablecoin addresses for a network
-export const getStablecoins = (chainId) => {
-  return STABLECOINS[chainId] || null;
+// Get supported token addresses for a network
+export const getSupportedTokens = (chainId) => {
+  return SUPPORTED_TOKENS[chainId] || null;
+};
+
+// Legacy alias for backwards compatibility
+export const getStablecoins = getSupportedTokens;
+export const STABLECOINS = SUPPORTED_TOKENS;
+
+// Token decimals mapping (by token address - lowercase for case-insensitive lookup)
+// CRITICAL: Different tokens use different decimals!
+// - USDT/USDC: 6 decimals (most chains) or 18 decimals (BSC)
+// - WBTC: 8 decimals (Bitcoin standard)
+// - Native tokens (ETH, MATIC, BNB): 18 decimals
+export const TOKEN_DECIMALS = {
+  // Polygon (137)
+  "0xc2132d05d31c914a87c6611c10748aeb04b58e8f": 6,  // USDT
+  "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359": 6,  // USDC
+  "0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6": 8,  // WBTC
+
+  // Ethereum (1)
+  "0xdac17f958d2ee523a2206206994597c13d831ec7": 6,  // USDT
+  "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": 6,  // USDC
+  "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599": 8,  // WBTC
+
+  // BSC (56) - NOTE: BSC uses 18 decimals for USDT/USDC!
+  "0x55d398326f99059ff775485246999027b3197955": 18, // USDT
+  "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d": 18, // USDC
+  "0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c": 18, // BTCB (NOT 8!)
+
+  // Arbitrum (42161)
+  "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9": 6,  // USDT
+  "0xaf88d065e77c8cc2239327c5edb3a432268e5831": 6,  // USDC
+  "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f": 8,  // WBTC
+
+  // Optimism (10)
+  "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58": 6,  // USDT
+  "0x0b2c639c533813f4aa9d7837caf62653d097ff85": 6,  // USDC
+  "0x68f180fcce6836688e9084f035309e29bf0a2095": 8,  // WBTC
+
+  // Base (8453)
+  "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": 6,  // USDC
+  "0x0555e30da8f98308edb960aa94c0db47230d2b9c": 8   // WBTC
+};
+
+// Get token decimals by address (case-insensitive)
+export const getTokenDecimals = (tokenAddress) => {
+  if (!tokenAddress) return 18; // Default to 18 for native tokens
+  const lowercaseAddress = tokenAddress.toLowerCase();
+  return TOKEN_DECIMALS[lowercaseAddress] || 18; // Default to 18 if unknown
+};
+
+// Helper to check if a token is WBTC
+export const isWBTC = (tokenAddress, chainId) => {
+  if (!tokenAddress || !chainId) return false;
+  const tokens = SUPPORTED_TOKENS[chainId];
+  if (!tokens) return false;
+  return tokenAddress.toLowerCase() === tokens.WBTC?.toLowerCase();
+};
+
+// Helper to check if a token is a stablecoin (USDT or USDC)
+export const isStablecoin = (tokenAddress, chainId) => {
+  if (!tokenAddress || !chainId) return false;
+  const tokens = SUPPORTED_TOKENS[chainId];
+  if (!tokens) return false;
+  const addr = tokenAddress.toLowerCase();
+  return addr === tokens.USDT?.toLowerCase() || addr === tokens.USDC?.toLowerCase();
 };
 
 // V2 Contract ABI with ERC20 support
@@ -256,6 +329,36 @@ export const NETWORKS = {
     rpcUrl: "https://rpc.sepolia.org",
     nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
     blockExplorer: "https://sepolia.etherscan.io",
+    isTestnet: true,
+    gasEstimate: "FREE"
+  },
+  97: {
+    chainId: 97,
+    name: "BSC Testnet",
+    shortName: "tBNB",
+    rpcUrl: "https://data-seed-prebsc-1-s1.binance.org:8545",
+    nativeCurrency: { name: "Test BNB", symbol: "tBNB", decimals: 18 },
+    blockExplorer: "https://testnet.bscscan.com",
+    isTestnet: true,
+    gasEstimate: "FREE"
+  },
+  421614: {
+    chainId: 421614,
+    name: "Arbitrum Sepolia",
+    shortName: "tARB",
+    rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+    nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+    blockExplorer: "https://sepolia.arbiscan.io",
+    isTestnet: true,
+    gasEstimate: "FREE"
+  },
+  84532: {
+    chainId: 84532,
+    name: "Base Sepolia",
+    shortName: "tBASE",
+    rpcUrl: "https://sepolia.base.org",
+    nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+    blockExplorer: "https://sepolia.basescan.org",
     isTestnet: true,
     gasEstimate: "FREE"
   }

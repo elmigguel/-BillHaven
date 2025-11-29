@@ -53,8 +53,13 @@ async function main() {
   console.log(`Balance: ${hre.ethers.formatEther(balance)} ETH/MATIC/BNB`);
   console.log("=".repeat(60));
 
-  // Fee wallet address (jouw fee wallet)
-  const FEE_WALLET = "0x596b95782d98295283c5d72142e477d92549cde3";
+  // Fee wallet address - read from environment variable with fallback
+  const FEE_WALLET = process.env.FEE_WALLET || "0x596b95782d98295283c5d72142e477d92549cde3";
+
+  if (!process.env.FEE_WALLET) {
+    console.log("⚠️  Warning: FEE_WALLET not set in environment, using default");
+  }
+
   console.log(`Fee Wallet: ${FEE_WALLET}`);
 
   // Deploy contract

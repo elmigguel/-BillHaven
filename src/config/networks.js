@@ -23,6 +23,11 @@ export const EVM_NETWORKS = {
         address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
         decimals: 6,
         symbol: 'USDC'
+      },
+      WBTC: {
+        address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+        decimals: 8,
+        symbol: 'WBTC'
       }
     }
   },
@@ -45,9 +50,14 @@ export const EVM_NETWORKS = {
         symbol: 'USDT'
       },
       USDC: {
-        address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+        address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
         decimals: 6,
         symbol: 'USDC'
+      },
+      WBTC: {
+        address: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6',
+        decimals: 8,
+        symbol: 'WBTC'
       }
     }
   },
@@ -73,6 +83,11 @@ export const EVM_NETWORKS = {
         address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
         decimals: 18,
         symbol: 'USDC'
+      },
+      BTCB: {
+        address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
+        decimals: 18,
+        symbol: 'BTCB'
       }
     }
   },
@@ -98,6 +113,11 @@ export const EVM_NETWORKS = {
         address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
         decimals: 6,
         symbol: 'USDC'
+      },
+      WBTC: {
+        address: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
+        decimals: 8,
+        symbol: 'WBTC'
       }
     }
   },
@@ -120,9 +140,14 @@ export const EVM_NETWORKS = {
         symbol: 'USDT'
       },
       USDC: {
-        address: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607',
+        address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
         decimals: 6,
         symbol: 'USDC'
+      },
+      WBTC: {
+        address: '0x68f180fcCe6836688e9084f035309E29Bf0A2095',
+        decimals: 8,
+        symbol: 'WBTC'
       }
     }
   },
@@ -143,6 +168,11 @@ export const EVM_NETWORKS = {
         address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
         decimals: 6,
         symbol: 'USDC'
+      },
+      WBTC: {
+        address: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',
+        decimals: 8,
+        symbol: 'WBTC'
       }
     }
   }
