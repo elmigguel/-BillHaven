@@ -132,8 +132,22 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Client-side admin check (for UI display only - NOT for security)
+  // IMPORTANT: All actual security checks happen via RLS policies on the server
   const isAdmin = () => {
     return profile?.role === 'admin'
+  }
+
+  // Server-side admin verification (use this for sensitive operations)
+  const verifyAdminServer = async () => {
+    try {
+      const { data, error } = await supabase.rpc('is_admin')
+      if (error) throw error
+      return data === true
+    } catch (error) {
+      console.error('Admin verification failed:', error)
+      return false
+    }
   }
 
   const value = {
@@ -145,7 +159,8 @@ export function AuthProvider({ children }) {
     signOut,
     resetPassword,
     updateProfile,
-    isAdmin
+    isAdmin,
+    verifyAdminServer
   }
 
   return (

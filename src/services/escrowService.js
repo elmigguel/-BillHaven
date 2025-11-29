@@ -5,13 +5,30 @@
  */
 
 import { ethers } from 'ethers';
-import { ESCROW_ABI, getEscrowAddress, POLYGON_MAINNET, POLYGON_AMOY } from '../config/contracts';
+import {
+  ESCROW_ABI,
+  ESCROW_ABI_V2,
+  getEscrowAddress,
+  getStablecoins,
+  POLYGON_MAINNET,
+  POLYGON_AMOY
+} from '../config/contracts';
+
+// ERC20 ABI for token approval
+const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
+];
 
 export const escrowService = {
   /**
-   * Get contract instance with signer (for write operations)
+   * Get V2 contract instance with signer (for write operations)
+   * Uses V2 ABI with ERC20 support
    */
-  getContract(signer) {
+  getContract(signer, useV2 = true) {
     const chainId = signer.provider?.network?.chainId;
     const address = getEscrowAddress(chainId);
 
@@ -19,20 +36,29 @@ export const escrowService = {
       throw new Error(`Escrow contract not deployed on chain ${chainId}`);
     }
 
-    return new ethers.Contract(address, ESCROW_ABI, signer);
+    const abi = useV2 ? ESCROW_ABI_V2 : ESCROW_ABI;
+    return new ethers.Contract(address, abi, signer);
   },
 
   /**
-   * Get contract instance with provider (for read operations)
+   * Get V2 contract instance with provider (for read operations)
    */
-  getReadOnlyContract(provider, chainId) {
+  getReadOnlyContract(provider, chainId, useV2 = true) {
     const address = getEscrowAddress(chainId);
 
     if (!address) {
       throw new Error(`Escrow contract not deployed on chain ${chainId}`);
     }
 
-    return new ethers.Contract(address, ESCROW_ABI, provider);
+    const abi = useV2 ? ESCROW_ABI_V2 : ESCROW_ABI;
+    return new ethers.Contract(address, abi, provider);
+  },
+
+  /**
+   * Get ERC20 token contract
+   */
+  getTokenContract(tokenAddress, signerOrProvider) {
+    return new ethers.Contract(tokenAddress, ERC20_ABI, signerOrProvider);
   },
 
   /**
@@ -73,6 +99,103 @@ export const escrowService = {
     // Still return txHash so user can track the transaction
     console.error('BillCreated event not found in receipt. This may indicate a contract issue.');
     throw new Error('Bill created on blockchain but could not retrieve bill ID. Transaction: ' + receipt.hash);
+  },
+
+  // ============ V2 ERC20 TOKEN FUNCTIONS ============
+
+  /**
+   * Bill Maker: Create bill with ERC20 token (V2)
+   * @param {ethers.Signer} signer - Connected wallet signer
+   * @param {string} tokenAddress - ERC20 token contract address
+   * @param {string} amount - Amount in token units (will be converted with decimals)
+   * @param {string} platformFee - Platform fee in token units
+   * @returns {Promise<{billId: number, txHash: string, approvalTxHash: string}>}
+   */
+  async createBillWithToken(signer, tokenAddress, amount, platformFee) {
+    const contract = this.getContract(signer, true);
+    const tokenContract = this.getTokenContract(tokenAddress, signer);
+    const escrowAddress = await contract.getAddress();
+
+    // Get token decimals
+    const decimals = await tokenContract.decimals();
+    const totalAmount = ethers.parseUnits(amount.toString(), decimals);
+    const feeAmount = ethers.parseUnits(platformFee.toString(), decimals);
+
+    // Check current allowance
+    const signerAddress = await signer.getAddress();
+    const currentAllowance = await tokenContract.allowance(signerAddress, escrowAddress);
+
+    let approvalTxHash = null;
+
+    // Approve if needed
+    if (currentAllowance < totalAmount) {
+      const approveTx = await tokenContract.approve(escrowAddress, totalAmount);
+      const approvalReceipt = await approveTx.wait();
+      approvalTxHash = approvalReceipt.hash;
+    }
+
+    // Create bill with token
+    const tx = await contract.createBillWithToken(tokenAddress, totalAmount, feeAmount);
+    const receipt = await tx.wait();
+
+    // Find BillCreated event
+    const event = receipt.logs.find(log => {
+      try {
+        const parsed = contract.interface.parseLog(log);
+        return parsed?.name === 'BillCreated';
+      } catch {
+        return false;
+      }
+    });
+
+    if (event) {
+      const parsed = contract.interface.parseLog(event);
+      return {
+        billId: Number(parsed.args.billId),
+        txHash: receipt.hash,
+        approvalTxHash,
+        tokenAddress
+      };
+    }
+
+    throw new Error('Bill created but could not retrieve bill ID. Transaction: ' + receipt.hash);
+  },
+
+  /**
+   * Check if token is supported by contract
+   */
+  async isTokenSupported(provider, chainId, tokenAddress) {
+    const contract = this.getReadOnlyContract(provider, chainId, true);
+    return await contract.isTokenSupported(tokenAddress);
+  },
+
+  /**
+   * Get token balance for user
+   */
+  async getTokenBalance(provider, tokenAddress, userAddress) {
+    const tokenContract = this.getTokenContract(tokenAddress, provider);
+    const balance = await tokenContract.balanceOf(userAddress);
+    const decimals = await tokenContract.decimals();
+    return ethers.formatUnits(balance, decimals);
+  },
+
+  /**
+   * Get token info (symbol, decimals)
+   */
+  async getTokenInfo(provider, tokenAddress) {
+    const tokenContract = this.getTokenContract(tokenAddress, provider);
+    const [symbol, decimals] = await Promise.all([
+      tokenContract.symbol(),
+      tokenContract.decimals()
+    ]);
+    return { symbol, decimals: Number(decimals), address: tokenAddress };
+  },
+
+  /**
+   * Get supported stablecoins for current network
+   */
+  getSupportedTokens(chainId) {
+    return getStablecoins(chainId) || {};
   },
 
   /**
@@ -151,20 +274,26 @@ export const escrowService = {
   // ============ Read Functions ============
 
   /**
-   * Get bill details from contract
+   * Get bill details from contract (V2 - includes token address)
    * @param {ethers.Provider} provider - Provider instance
    * @param {number} chainId - Network chain ID
    * @param {number} billId - The bill ID
    */
   async getBill(provider, chainId, billId) {
-    const contract = this.getReadOnlyContract(provider, chainId);
+    const contract = this.getReadOnlyContract(provider, chainId, true);
     const bill = await contract.getBill(billId);
+
+    // V2 includes token address, V1 does not
+    const isNativeToken = bill.token === ethers.ZeroAddress || !bill.token;
+    const decimals = isNativeToken ? 18 : 6; // Native tokens use 18, stablecoins use 6
 
     return {
       billMaker: bill.billMaker,
       payer: bill.payer,
-      amount: ethers.formatEther(bill.amount),
-      platformFee: ethers.formatEther(bill.platformFee),
+      token: bill.token || ethers.ZeroAddress,
+      isNativeToken,
+      amount: isNativeToken ? ethers.formatEther(bill.amount) : ethers.formatUnits(bill.amount, decimals),
+      platformFee: isNativeToken ? ethers.formatEther(bill.platformFee) : ethers.formatUnits(bill.platformFee, decimals),
       fiatConfirmed: bill.fiatConfirmed,
       disputed: bill.disputed,
       createdAt: Number(bill.createdAt),

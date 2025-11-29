@@ -187,11 +187,22 @@ CREATE POLICY "Authenticated users can upload bill documents"
     auth.role() = 'authenticated'
   );
 
+-- FIXED: Was allowing all authenticated users to see all documents
+-- Now only allows users to view their own folder's documents
 CREATE POLICY "Bill owners can view their documents"
   ON storage.objects FOR SELECT
   USING (
     bucket_id = 'bill-documents' AND
-    auth.role() = 'authenticated'
+    (
+      -- User can view their own documents (folder starts with user id)
+      auth.uid()::text = (storage.foldername(name))[1]
+      OR
+      -- Admins can view all documents
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+      )
+    )
   );
 
 CREATE POLICY "Bill owners can delete their documents"

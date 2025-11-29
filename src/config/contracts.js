@@ -26,8 +26,8 @@ export const ESCROW_ADDRESSES = {
   8453: "",
 
   // ============ TESTNETS ============
-  // Polygon Amoy Testnet - V1 deployed
-  80002: "0x8beED27aA6d28FE42a9e792d81046DD1337a8240",
+  // Polygon Amoy Testnet - V2 deployed (with ERC20 support)
+  80002: "0x792B01c5965D94e2875DeFb48647fB3b4dd94e15",
 
   // Ethereum Sepolia
   11155111: "",

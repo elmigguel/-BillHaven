@@ -5,12 +5,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Send, Loader2, Wallet, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
+import { Upload, Send, Loader2, Wallet, AlertCircle, CheckCircle, ExternalLink, Coins } from 'lucide-react';
 import { billsApi } from '../../api/billsApi';
 import { storageApi } from '../../api/storageApi';
 import { calculateFee, FeeBreakdown } from './FeeCalculator';
 import { useWallet } from '../../contexts/WalletContext';
 import { escrowService } from '../../services/escrowService';
+import { TokenSelector } from '../wallet/TokenSelector';
+import { getNetwork } from '../../config/contracts';
 
 const CATEGORIES = [
   { value: 'rent', label: 'Rent' },
@@ -23,7 +25,7 @@ const CATEGORIES = [
 ];
 
 export default function BillSubmissionForm({ onSuccess }) {
-  const { isConnected, signer, chainId, connectWallet, isCorrectNetwork, getExplorerUrl, walletAddress } = useWallet();
+  const { isConnected, signer, chainId, connectWallet, isCorrectNetwork, getExplorerUrl, walletAddress, provider } = useWallet();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -36,7 +38,21 @@ export default function BillSubmissionForm({ onSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [escrowTxHash, setEscrowTxHash] = useState(null);
+  const [approvalTxHash, setApprovalTxHash] = useState(null);
   const [error, setError] = useState(null);
+
+  // V2: Token selection state
+  const [selectedToken, setSelectedToken] = useState({
+    type: 'NATIVE',
+    address: null,
+    symbol: getNetwork(chainId)?.nativeCurrency?.symbol || 'POL',
+    decimals: 18,
+    isNative: true
+  });
+
+  const handleTokenSelect = (token) => {
+    setSelectedToken(token);
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -93,21 +109,41 @@ export default function BillSubmissionForm({ onSuccess }) {
         description: formData.description,
         payment_instructions: formData.payment_instructions,
         payout_wallet: walletAddress, // Use connected wallet
-        crypto_currency: 'POL', // Polygon native token
+        crypto_currency: selectedToken.symbol, // V2: Use selected token symbol
+        payment_token: selectedToken.address || 'NATIVE', // V2: Store token address
+        payment_network: chainId === 137 ? 'polygon' : 'polygon_amoy',
         fee_percentage: fee.feePercentage,
         fee_amount: platformFee,
         payout_amount: parseFloat(fee.payoutAmount),
         proof_image_url: proofImageUrl
       });
 
-      // Step 4: Lock crypto in escrow contract
-      setUploadProgress('Locking crypto in escrow (confirm in wallet)...');
+      // Step 4: Lock crypto in escrow contract (V2: supports both native and ERC20)
+      let escrowResult;
 
-      const escrowResult = await escrowService.createBill(
-        signer,
-        totalToLock.toString(),
-        platformFee.toString()
-      );
+      if (selectedToken.isNative) {
+        // Native token flow (original V1)
+        setUploadProgress('Locking crypto in escrow (confirm in wallet)...');
+        escrowResult = await escrowService.createBill(
+          signer,
+          totalToLock.toString(),
+          platformFee.toString()
+        );
+      } else {
+        // ERC20 token flow (V2)
+        setUploadProgress(`Approving ${selectedToken.symbol} (confirm in wallet)...`);
+        escrowResult = await escrowService.createBillWithToken(
+          signer,
+          selectedToken.address,
+          totalToLock.toString(),
+          platformFee.toString()
+        );
+
+        // Store approval tx if it happened
+        if (escrowResult.approvalTxHash) {
+          setApprovalTxHash(escrowResult.approvalTxHash);
+        }
+      }
 
       setEscrowTxHash(escrowResult.txHash);
 
@@ -130,6 +166,7 @@ export default function BillSubmissionForm({ onSuccess }) {
       });
       setImageFile(null);
       setUploadProgress('');
+      setApprovalTxHash(null);
 
       onSuccess?.();
     } catch (error) {
@@ -138,7 +175,11 @@ export default function BillSubmissionForm({ onSuccess }) {
       if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
         setError('Transaction rejected in wallet');
       } else if (error.message?.includes('insufficient funds')) {
-        setError('Insufficient POL balance for this transaction');
+        setError(`Insufficient ${selectedToken.symbol} balance for this transaction`);
+      } else if (error.message?.includes('allowance')) {
+        setError(`Token approval failed. Please try again.`);
+      } else if (error.message?.includes('transfer amount exceeds balance')) {
+        setError(`Insufficient ${selectedToken.symbol} balance`);
       } else {
         setError(error.message || 'Failed to submit bill. Please try again.');
       }
@@ -275,6 +316,18 @@ export default function BillSubmissionForm({ onSuccess }) {
             </div>
           </div>
 
+          {/* V2: Token Selection */}
+          {isConnected && isCorrectNetwork() && (
+            <TokenSelector
+              chainId={chainId}
+              provider={provider}
+              userAddress={walletAddress}
+              selectedToken={selectedToken.type}
+              onTokenSelect={handleTokenSelect}
+              disabled={isSubmitting}
+            />
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="description" className="text-gray-300">Description</Label>
             <Textarea
@@ -317,19 +370,24 @@ export default function BillSubmissionForm({ onSuccess }) {
             <div className="p-4 bg-purple-950 rounded-lg border border-purple-800 space-y-3">
               <h4 className="font-semibold text-purple-300 flex items-center gap-2">
                 <Wallet className="w-5 h-5" />
-                Escrow Summary
+                Escrow Summary ({selectedToken.symbol})
               </h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-gray-400">Amount to payer:</div>
-                <div className="text-gray-100 font-mono">${fee.payoutAmount} POL</div>
+                <div className="text-gray-100 font-mono">{fee.payoutAmount} {selectedToken.symbol}</div>
                 <div className="text-gray-400">Platform fee ({fee.feePercentage}%):</div>
-                <div className="text-gray-100 font-mono">${fee.feeAmount} POL</div>
+                <div className="text-gray-100 font-mono">{fee.feeAmount} {selectedToken.symbol}</div>
                 <div className="text-gray-400 font-semibold border-t border-purple-800 pt-2">Total to lock:</div>
-                <div className="text-purple-300 font-mono font-semibold border-t border-purple-800 pt-2">${fee.totalToLock} POL</div>
+                <div className="text-purple-300 font-mono font-semibold border-t border-purple-800 pt-2">{fee.totalToLock} {selectedToken.symbol}</div>
               </div>
               <p className="text-xs text-purple-400 mt-2">
                 This amount will be locked in the smart contract until the payer pays your bill
               </p>
+              {!selectedToken.isNative && (
+                <p className="text-xs text-amber-400 mt-1">
+                  Using ERC20 token requires 2 transactions: approve + lock
+                </p>
+              )}
             </div>
           )}
 

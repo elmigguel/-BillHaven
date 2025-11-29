@@ -1,4 +1,51 @@
 import { supabase } from '../lib/supabase'
+import { ethers } from 'ethers'
+
+// Wallet address validation utilities
+const walletValidation = {
+  // Validate Ethereum/EVM address (with checksum)
+  isValidEthereumAddress(address) {
+    if (!address || typeof address !== 'string') return false
+    try {
+      // ethers.getAddress will throw if invalid, and returns checksummed address
+      ethers.getAddress(address)
+      return true
+    } catch {
+      return false
+    }
+  },
+
+  // Validate Bitcoin address (basic format check)
+  isValidBitcoinAddress(address) {
+    if (!address || typeof address !== 'string') return false
+    // Bitcoin mainnet: starts with 1, 3, or bc1
+    // Bitcoin testnet: starts with m, n, 2, or tb1
+    const btcRegex = /^(1|3|bc1|m|n|2|tb1)[a-zA-HJ-NP-Z0-9]{25,62}$/
+    return btcRegex.test(address)
+  },
+
+  // Validate TRON address
+  isValidTronAddress(address) {
+    if (!address || typeof address !== 'string') return false
+    // TRON addresses start with T and are 34 characters
+    return /^T[a-zA-Z0-9]{33}$/.test(address)
+  },
+
+  // Validate any supported wallet address
+  isValidWalletAddress(address, network = 'ethereum') {
+    switch (network.toLowerCase()) {
+      case 'bitcoin':
+      case 'btc':
+        return this.isValidBitcoinAddress(address)
+      case 'tron':
+      case 'trx':
+        return this.isValidTronAddress(address)
+      default:
+        // Default to EVM validation (Ethereum, Polygon, BSC, etc.)
+        return this.isValidEthereumAddress(address)
+    }
+  }
+}
 
 export const billsApi = {
   // Get all bills
@@ -62,10 +109,11 @@ export const billsApi = {
     return data
   },
 
-  // Basic validation - structure only, no auto-approval logic
+  // Enhanced validation with proper wallet address checking
   validateBillStructure(billData) {
     const errors = []
 
+    // Amount validation
     const amount = parseFloat(billData.amount) || 0
     if (amount <= 0) {
       errors.push('Amount must be greater than 0')
@@ -74,16 +122,32 @@ export const billsApi = {
       errors.push('Amount exceeds maximum limit')
     }
 
-    if (!billData.payout_wallet || billData.payout_wallet.length < 10) {
-      errors.push('Valid wallet address required')
+    // Wallet address validation with proper checksum/format checking
+    if (!billData.payout_wallet) {
+      errors.push('Wallet address is required')
+    } else {
+      const network = billData.payment_network || 'polygon'
+      if (!walletValidation.isValidWalletAddress(billData.payout_wallet, network)) {
+        errors.push(`Invalid wallet address format for ${network}. Please check the address.`)
+      }
     }
 
+    // Title validation
     if (!billData.title || billData.title.length < 3) {
       errors.push('Title must be at least 3 characters')
     }
+    if (billData.title && billData.title.length > 100) {
+      errors.push('Title must be less than 100 characters')
+    }
 
+    // Category validation
     if (!billData.category || billData.category.length === 0) {
       errors.push('Category is required')
+    }
+
+    // Payment instructions validation (required for payers to know how to pay)
+    if (!billData.payment_instructions || billData.payment_instructions.length < 10) {
+      errors.push('Payment instructions must be at least 10 characters')
     }
 
     if (errors.length > 0) {
