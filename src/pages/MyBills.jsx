@@ -32,7 +32,16 @@ export default function MyBills() {
   const [txHashInputs, setTxHashInputs] = useState({});
   const [isReleasingEscrow, setIsReleasingEscrow] = useState({});
   const queryClient = useQueryClient();
-  const { signer, isConnected, isCorrectNetwork, getExplorerUrl, chainId } = useWallet();
+
+  // FIX: Safe destructuring with defaults
+  const wallet = useWallet() || {};
+  const {
+    signer = null,
+    isConnected = false,
+    isCorrectNetwork = () => false,
+    getExplorerUrl = () => '#',
+    chainId = null
+  } = wallet;
 
   // Mijn bills ophalen
   const { data: bills = [], isLoading } = useQuery({

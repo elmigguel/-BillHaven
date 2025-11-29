@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { WalletProvider } from './contexts/WalletContext';
+import { TonWalletProvider } from './contexts/TonWalletContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './Layout.jsx';
@@ -38,7 +40,9 @@ export default function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
+          <WalletProvider>
+            <TonWalletProvider>
+              <Routes>
           {/* Public routes */}
           <Route path={window.createPageUrl('Home')} element={<Layout><Home /></Layout>} />
           <Route path={window.createPageUrl('Login')} element={<Login />} />
@@ -102,7 +106,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          </Routes>
+              </Routes>
+            </TonWalletProvider>
+          </WalletProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

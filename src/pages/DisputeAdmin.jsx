@@ -18,7 +18,7 @@ import {
   Loader2,
   Shield
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatBillDate } from '../utils/dateUtils';
 import { toast } from 'sonner';
 import { escrowService } from '../services/escrowService';
 import { ethers } from 'ethers';
@@ -160,7 +160,7 @@ export default function DisputeAdmin() {
                     </div>
                     <div>
                       <span className="text-gray-400 block">Created:</span>
-                      <span className="text-white">{format(new Date(bill.created_at), 'MMM d, yyyy')}</span>
+                      <span className="text-white">{formatBillDate(bill)}</span>
                     </div>
                     <div>
                       <span className="text-gray-400 block">Status:</span>

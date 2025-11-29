@@ -48,6 +48,12 @@ export const WalletProvider = ({ children }) => {
     // Debounce: wait 100ms for rapid-fire events to settle
     reinitTimerRef.current = setTimeout(async () => {
       try {
+        // FIX: Don't auto-reconnect if user intentionally disconnected
+        const wasDisconnected = localStorage.getItem('billhaven_wallet_disconnected') === 'true'
+        if (wasDisconnected) {
+          return // User disconnected, don't auto-reconnect
+        }
+
         const ethProvider = new ethers.BrowserProvider(window.ethereum)
         const accounts = await ethProvider.listAccounts()
 
@@ -80,9 +86,12 @@ export const WalletProvider = ({ children }) => {
           const ethProvider = new ethers.BrowserProvider(window.ethereum)
           setProvider(ethProvider)
 
+          // FIX: Check if user intentionally disconnected - don't auto-reconnect
+          const wasDisconnected = localStorage.getItem('billhaven_wallet_disconnected') === 'true'
+
           // Check if already connected
           const accounts = await ethProvider.listAccounts()
-          if (accounts.length > 0) {
+          if (accounts.length > 0 && !wasDisconnected) {
             const network = await ethProvider.getNetwork()
             const ethSigner = await ethProvider.getSigner()
 
@@ -195,6 +204,9 @@ export const WalletProvider = ({ children }) => {
       const ethSigner = await ethProvider.getSigner()
       const network = await ethProvider.getNetwork()
 
+      // FIX: Clear disconnect flag when user connects new wallet
+      localStorage.removeItem('billhaven_wallet_disconnected')
+
       setWalletAddress(accounts[0])
       setChainId(Number(network.chainId))
       setProvider(ethProvider)
@@ -216,8 +228,26 @@ export const WalletProvider = ({ children }) => {
     }
   }, [detectWalletType])
 
-  // Disconnect wallet
-  const disconnect = useCallback(() => {
+  // Disconnect wallet - FIX: Actually disconnect from MetaMask + prevent auto-reconnect
+  const disconnect = useCallback(async () => {
+    // FIX: Try to revoke MetaMask permissions (supported in newer versions)
+    if (window.ethereum?.isMetaMask) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_revokePermissions',
+          params: [{ eth_accounts: {} }]
+        })
+        console.log('✅ MetaMask permissions revoked')
+      } catch (err) {
+        // Fallback for wallets that don't support revokePermissions
+        console.log('ℹ️ wallet_revokePermissions not supported, using localStorage flag')
+      }
+    }
+
+    // FIX: Set flag to prevent auto-reconnect on page refresh
+    localStorage.setItem('billhaven_wallet_disconnected', 'true')
+
+    // Clear React state
     setWalletAddress('')
     setChainId(null)
     setSigner(null)

@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Send, Loader2, Wallet, AlertCircle, CheckCircle, ExternalLink, Coins } from 'lucide-react';
+import { Upload, Send, Loader2, Wallet, AlertCircle, CheckCircle, ExternalLink, Coins, Diamond } from 'lucide-react';
 import { billsApi } from '../../api/billsApi';
 import { storageApi } from '../../api/storageApi';
 import { calculateFee, FeeBreakdown } from './FeeCalculator';
@@ -25,7 +25,18 @@ const CATEGORIES = [
 ];
 
 export default function BillSubmissionForm({ onSuccess }) {
-  const { isConnected, signer, chainId, connectWallet, isCorrectNetwork, getExplorerUrl, walletAddress, provider } = useWallet();
+  // FIX: Safe destructuring with defaults to prevent crashes
+  const wallet = useWallet() || {};
+  const {
+    isConnected = false,
+    signer = null,
+    chainId = null,
+    connectWallet = () => {},
+    isCorrectNetwork = () => false,
+    getExplorerUrl = () => '#',
+    walletAddress = '',
+    provider = null
+  } = wallet;
 
   const [formData, setFormData] = useState({
     title: '',
@@ -33,6 +44,7 @@ export default function BillSubmissionForm({ onSuccess }) {
     category: 'other',
     description: '',
     payment_instructions: '',
+    maker_ton_address: '', // TON address for receiving TON payments
   });
   const [imageFile, setImageFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,11 +53,14 @@ export default function BillSubmissionForm({ onSuccess }) {
   const [approvalTxHash, setApprovalTxHash] = useState(null);
   const [error, setError] = useState(null);
 
-  // V2: Token selection state
+  // V2: Token selection state - FIX: Safe access to network config
+  const networkConfig = chainId ? getNetwork(chainId) : null;
+  const defaultSymbol = networkConfig?.nativeCurrency?.symbol || 'POL';
+
   const [selectedToken, setSelectedToken] = useState({
     type: 'NATIVE',
     address: null,
-    symbol: getNetwork(chainId)?.nativeCurrency?.symbol || 'POL',
+    symbol: defaultSymbol,
     decimals: 18,
     isNative: true
   });
@@ -115,7 +130,8 @@ export default function BillSubmissionForm({ onSuccess }) {
         fee_percentage: fee.feePercentage,
         fee_amount: platformFee,
         payout_amount: parseFloat(fee.payoutAmount),
-        proof_image_url: proofImageUrl
+        proof_image_url: proofImageUrl,
+        maker_ton_address: formData.maker_ton_address || null // TON address for direct payments
       });
 
       // Step 4: Lock crypto in escrow contract (V2: supports both native and ERC20)
@@ -163,6 +179,7 @@ export default function BillSubmissionForm({ onSuccess }) {
         category: 'other',
         description: '',
         payment_instructions: '',
+        maker_ton_address: '',
       });
       setImageFile(null);
       setUploadProgress('');
@@ -361,6 +378,27 @@ export default function BillSubmissionForm({ onSuccess }) {
               />
               <p className="text-xs text-emerald-400">
                 The payer will see this and pay your bill using this method
+              </p>
+            </div>
+          </div>
+
+          {/* TON Address (Optional) - For receiving TON payments */}
+          <div className="p-4 bg-sky-950 rounded-lg border border-sky-800 space-y-3">
+            <h4 className="font-semibold text-sky-300 flex items-center gap-2">
+              <Diamond className="w-5 h-5" />
+              Accept TON Payments (Optional)
+            </h4>
+            <div className="space-y-2">
+              <Label htmlFor="maker_ton_address" className="text-gray-300">Your TON Wallet Address</Label>
+              <Input
+                id="maker_ton_address"
+                placeholder="EQ... or UQ... (your TON address)"
+                value={formData.maker_ton_address}
+                onChange={(e) => setFormData({ ...formData, maker_ton_address: e.target.value })}
+                className="bg-gray-900 border-gray-600 text-gray-100 font-mono"
+              />
+              <p className="text-xs text-sky-400">
+                Add your TON address to accept ultra-low fee payments (~$0.025/tx). Payers can then choose between EVM or TON.
               </p>
             </div>
           </div>

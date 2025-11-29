@@ -195,6 +195,52 @@ export const TRON_CONFIG = {
   }
 }
 
+// TON network configuration - Ultra-low fees ($0.025/tx)
+export const TON_CONFIG = {
+  mainnet: {
+    id: 'ton-mainnet',
+    name: 'TON',
+    shortName: 'TON',
+    endpoint: 'https://toncenter.com/api/v2/jsonRPC',
+    explorer: 'https://tonscan.org',
+    isTestnet: false,
+    nativeCurrency: {
+      name: 'Toncoin',
+      symbol: 'TON',
+      decimals: 9
+    },
+    tokens: {
+      USDT: {
+        address: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
+        decimals: 6,
+        symbol: 'USDT',
+        name: 'Tether USD'
+      }
+    }
+  },
+  testnet: {
+    id: 'ton-testnet',
+    name: 'TON Testnet',
+    shortName: 'tTON',
+    endpoint: 'https://testnet.toncenter.com/api/v2/jsonRPC',
+    explorer: 'https://testnet.tonscan.org',
+    isTestnet: true,
+    nativeCurrency: {
+      name: 'Test Toncoin',
+      symbol: 'TON',
+      decimals: 9
+    },
+    tokens: {
+      USDT: {
+        address: 'kQD0GKBM8ZbryVk2aESmzfU6b9b_8era_IkvBSELujFZPsyy',
+        decimals: 6,
+        symbol: 'USDT',
+        name: 'Test USDT'
+      }
+    }
+  }
+}
+
 // Helper to get all supported networks
 export const ALL_NETWORKS = {
   ...Object.keys(EVM_NETWORKS).reduce((acc, key) => {
@@ -202,7 +248,14 @@ export const ALL_NETWORKS = {
     return acc
   }, {}),
   bitcoin: { ...BITCOIN_CONFIG, type: 'bitcoin', name: 'Bitcoin', shortName: 'BTC' },
-  tron: { ...TRON_CONFIG, type: 'tron', name: 'Tron', shortName: 'TRX' }
+  tron: { ...TRON_CONFIG, type: 'tron', name: 'Tron', shortName: 'TRX' },
+  ton: { ...TON_CONFIG.mainnet, type: 'ton' },
+  'ton-testnet': { ...TON_CONFIG.testnet, type: 'ton' }
+}
+
+// Helper to check if network is TON
+export const isTonNetwork = (networkKey) => {
+  return networkKey === 'ton' || networkKey === 'ton-testnet'
 }
 
 // Helper to check if network is EVM compatible

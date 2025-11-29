@@ -17,14 +17,17 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const { data: bills = [], isLoading } = useQuery({
     queryKey: ['bills'],
-    queryFn: () => billsApi.list()
+    queryFn: () => billsApi.list(),
+    // FIX: Only fetch bills when user is loaded
+    enabled: !!user && !authLoading
   });
 
-  const myBills = bills.filter(b => b.user_id === user?.id);
+  // FIX: Guard against user being null during initial load
+  const myBills = user?.id ? bills.filter(b => b.user_id === user.id) : [];
   const pendingBills = myBills.filter(b => b.status === 'pending');
   const approvedBills = myBills.filter(b => b.status === 'approved');
   const paidBills = myBills.filter(b => b.status === 'paid');

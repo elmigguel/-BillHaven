@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -8,8 +8,16 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const { signIn, user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+
+  // FIX: Wait for auth to complete before navigating
+  // This prevents race condition where we navigate before profile is loaded
+  useEffect(() => {
+    if (user && !authLoading) {
+      navigate('/dashboard')
+    }
+  }, [user, authLoading, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -21,9 +29,8 @@ export default function Login() {
     if (error) {
       setError(error.message)
       setLoading(false)
-    } else {
-      navigate('/dashboard')
     }
+    // FIX: Don't navigate here - useEffect above handles it when auth is ready
   }
 
   return (

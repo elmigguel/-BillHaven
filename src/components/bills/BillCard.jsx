@@ -12,7 +12,7 @@ import {
   XCircle,
   Coins
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatBillDate } from '../../utils/dateUtils';
 
 const statusConfig = {
   pending: { 
@@ -99,7 +99,7 @@ export default function BillCard({ bill, onViewDetails, showActions = false, onA
       <div className="flex items-center gap-4 text-xs text-gray-400">
           <div className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            {format(new Date(bill.created_date), 'MMM d, yyyy')}
+            {formatBillDate(bill)}
           </div>
           {bill.crypto_wallet_address && (
             <div className="flex items-center gap-1">

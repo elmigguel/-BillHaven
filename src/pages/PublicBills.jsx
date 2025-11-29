@@ -14,12 +14,15 @@ import {
   Clock,
   CheckCircle2,
   DollarSign,
-  ExternalLink
+  ExternalLink,
+  Diamond
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { formatBillDate } from '../utils/dateUtils';
 import PaymentFlow from '../components/bills/PaymentFlow';
+import TonPaymentFlow from '../components/bills/TonPaymentFlow';
 import { useWallet } from '../contexts/WalletContext';
+import { useTonWalletContext } from '../contexts/TonWalletContext';
 
 const categoryColors = {
   rent: 'bg-purple-100 text-purple-700',
@@ -34,8 +37,17 @@ const categoryColors = {
 export default function PublicBills() {
   const [selectedBill, setSelectedBill] = useState(null);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
+  const [showTonPaymentFlow, setShowTonPaymentFlow] = useState(false);
   const queryClient = useQueryClient();
-  const { isConnected, walletAddress } = useWallet();
+
+  // FIX: Safe destructuring with defaults
+  const wallet = useWallet() || {};
+  const { isConnected = false, walletAddress = '' } = wallet;
+
+  // TON Wallet
+  const tonWallet = useTonWalletContext() || {};
+  const { isConnected: tonConnected = false } = tonWallet;
+
   const { user } = useAuth();
 
   const { data: bills = [], isLoading } = useQuery({
@@ -100,6 +112,29 @@ export default function PublicBills() {
   const handleStartPayment = (bill) => {
     setSelectedBill(bill);
     setShowPaymentFlow(true);
+  };
+
+  // Start TON payment flow
+  const handleStartTonPayment = (bill) => {
+    setSelectedBill(bill);
+    setShowTonPaymentFlow(true);
+  };
+
+  // Handle TON payment completion
+  const handleTonPaymentComplete = async (paymentData) => {
+    try {
+      // Update bill with TON payment info
+      await billsApi.update(paymentData.billId, {
+        status: 'paid_pending',
+        ton_tx_hash: paymentData.txHash,
+        payer_ton_address: paymentData.payerAddress,
+        payment_network: 'ton'
+      });
+      queryClient.invalidateQueries({ queryKey: ['publicBills'] });
+      toast.success('TON payment recorded!');
+    } catch (error) {
+      console.error('Error updating bill with TON payment:', error);
+    }
   };
 
   // Handler voor claim
@@ -185,7 +220,7 @@ export default function PublicBills() {
                   <div className="flex items-center gap-4 text-xs text-gray-400">
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {format(new Date(bill.created_at), 'MMM d, yyyy')}
+                      {formatBillDate(bill)}
                     </div>
                     <div className="flex items-center gap-1">
                       <Wallet className="w-3 h-3" />
@@ -205,13 +240,24 @@ export default function PublicBills() {
                     </a>
                   )}
 
-                  <Button
-                    onClick={() => handleStartPayment(bill)}
-                    className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
-                  >
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    Deze Bill Betalen
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleStartPayment(bill)}
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                    >
+                      <DollarSign className="w-4 h-4 mr-2" />
+                      EVM Pay
+                    </Button>
+                    {bill.maker_ton_address && (
+                      <Button
+                        onClick={() => handleStartTonPayment(bill)}
+                        className="flex-1 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800"
+                      >
+                        <Diamond className="w-4 h-4 mr-2" />
+                        TON Pay
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -226,7 +272,7 @@ export default function PublicBills() {
 
       </div>
 
-      {/* Payment Flow - Nieuwe Fiat→Crypto flow */}
+      {/* Payment Flow - EVM Fiat→Crypto flow */}
       <PaymentFlow
         bill={selectedBill}
         isOpen={showPaymentFlow}
@@ -235,6 +281,18 @@ export default function PublicBills() {
           setSelectedBill(null);
         }}
         onClaimBill={handleClaimBill}
+        onSubmitProof={handleSubmitProof}
+      />
+
+      {/* TON Payment Flow - Ultra-low fee payments */}
+      <TonPaymentFlow
+        bill={selectedBill}
+        isOpen={showTonPaymentFlow}
+        onClose={() => {
+          setShowTonPaymentFlow(false);
+          setSelectedBill(null);
+        }}
+        onPaymentComplete={handleTonPaymentComplete}
         onSubmitProof={handleSubmitProof}
       />
     </div>

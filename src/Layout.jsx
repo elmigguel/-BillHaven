@@ -2,7 +2,6 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { createPageUrl } from '@/utils'
 import { useAuth } from './contexts/AuthContext'
-import { WalletProvider } from './contexts/WalletContext'
 import { Button } from '@/components/ui/button'
 import { Settings, LogOut, Globe, ChevronDown } from 'lucide-react'
 import {
@@ -18,8 +17,7 @@ export default function Layout({ children }) {
   const { user, profile, signOut, isAdmin } = useAuth()
 
   return (
-    <WalletProvider>
-      <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900">
         {/* Top Navigation */}
         <nav className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,10 +79,9 @@ export default function Layout({ children }) {
           </div>
         </nav>
 
-        {children}
+      {children}
 
-        <InstallPrompt />
-      </div>
-    </WalletProvider>
+      <InstallPrompt />
+    </div>
   )
 }

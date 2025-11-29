@@ -32,7 +32,17 @@ export default function PaymentFlow({
   onClaimBill,      // Stap 1: Claim met wallet adres (database update)
   onSubmitProof,    // Stap 2: Upload bewijs
 }) {
-  const { isConnected, signer, walletAddress, isCorrectNetwork, connectWallet, getExplorerUrl, chainId } = useWallet();
+  // FIX: Safe destructuring with defaults to prevent crashes
+  const wallet = useWallet() || {};
+  const {
+    isConnected = false,
+    signer = null,
+    walletAddress = '',
+    isCorrectNetwork = () => false,
+    connectWallet = () => {},
+    getExplorerUrl = () => '#',
+    chainId = null
+  } = wallet;
 
   const [step, setStep] = useState(1);
   const [payerWalletAddress, setPayerWalletAddress] = useState(walletAddress || '');

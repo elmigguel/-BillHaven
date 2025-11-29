@@ -1,12 +1,15 @@
 /**
- * ConnectWalletButton - Web3 Wallet Connection Button
+ * ConnectWalletButton - Multi-Chain Web3 Wallet Connection Button
  *
+ * Supports: EVM chains (MetaMask) + TON (TonConnect)
  * Shows connect button when disconnected, wallet info when connected.
  * Includes network switching and disconnect functionality.
  */
 
 import React, { useState } from 'react'
 import { useWallet } from '../../contexts/WalletContext'
+import { useTonWalletContext } from '../../contexts/TonWalletContext'
+import { TonConnectButton } from '@tonconnect/ui-react'
 import { Button } from '../ui/button'
 import {
   DropdownMenu,
@@ -19,8 +22,8 @@ import {
 import { Badge } from '../ui/badge'
 import { Wallet, Copy, ExternalLink, LogOut, AlertCircle, Check, ChevronDown } from 'lucide-react'
 
-// ALL supported networks - Multi-chain support like Uniswap/1inch
-const SUPPORTED_NETWORKS = {
+// EVM Networks - Multi-chain support
+const EVM_NETWORKS = {
   // ============ MAINNETS ============
   137: { name: 'Polygon', shortName: 'MATIC', color: 'bg-purple-500', type: 'mainnet', icon: '🟣' },
   1: { name: 'Ethereum', shortName: 'ETH', color: 'bg-blue-600', type: 'mainnet', icon: '⟠' },
@@ -36,27 +39,79 @@ const SUPPORTED_NETWORKS = {
   84532: { name: 'Base Sepolia', shortName: 'tBASE', color: 'bg-blue-300', type: 'testnet', icon: '🔷' },
 }
 
+// TON Networks
+const TON_NETWORKS = {
+  'ton-mainnet': { name: 'TON', shortName: 'TON', color: 'bg-sky-500', type: 'mainnet', icon: '💎' },
+  'ton-testnet': { name: 'TON Testnet', shortName: 'tTON', color: 'bg-sky-400', type: 'testnet', icon: '💎' },
+}
+
+// Combined supported networks
+const SUPPORTED_NETWORKS = { ...EVM_NETWORKS, ...TON_NETWORKS }
+
 // Separate mainnets and testnets for UI
 const MAINNET_CHAINS = [137, 1, 56, 42161, 10, 8453]
 const TESTNET_CHAINS = [80002, 11155111, 97, 421614, 84532]
 
 export default function ConnectWalletButton() {
+  // EVM Wallet (MetaMask, etc.)
+  const evmWallet = useWallet() || {};
   const {
-    walletAddress,
-    chainId,
-    isConnected,
-    isConnecting,
-    error,
-    connectWallet,
-    disconnect,
-    switchNetwork,
-    formatAddress,
-    getExplorerUrl,
-    walletType,
-    isCorrectNetwork,
-  } = useWallet()
+    walletAddress: evmAddress = '',
+    chainId = null,
+    isConnected: evmConnected = false,
+    isConnecting: evmConnecting = false,
+    error: evmError = null,
+    connectWallet: connectEvmWallet = () => {},
+    disconnect: disconnectEvm = () => {},
+    switchNetwork = () => {},
+    formatAddress: evmFormatAddress = (addr) => addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : '',
+    getExplorerUrl: evmExplorerUrl = () => '#',
+    walletType = null,
+  } = evmWallet;
 
+  // TON Wallet (TonConnect)
+  const tonWallet = useTonWalletContext() || {};
+  const {
+    walletAddress: tonAddress = '',
+    isConnected: tonConnected = false,
+    isConnecting: tonConnecting = false,
+    error: tonError = null,
+    connectWallet: connectTonWallet = () => {},
+    disconnect: disconnectTon = () => {},
+    formatAddress: tonFormatAddress = (addr) => addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : '',
+    getExplorerUrl: tonExplorerUrl = () => '#',
+    network: tonNetwork = 'mainnet',
+  } = tonWallet;
+
+  // State for blockchain type selection
+  const [blockchainType, setBlockchainType] = useState('evm') // 'evm' | 'ton'
   const [copied, setCopied] = useState(false)
+
+  // Derived state based on selected blockchain
+  const isConnected = blockchainType === 'ton' ? tonConnected : evmConnected
+  const isConnecting = blockchainType === 'ton' ? tonConnecting : evmConnecting
+  const walletAddress = blockchainType === 'ton' ? tonAddress : evmAddress
+  const error = blockchainType === 'ton' ? tonError : evmError
+  const formatAddress = blockchainType === 'ton' ? tonFormatAddress : evmFormatAddress
+  const getExplorerUrl = blockchainType === 'ton' ? tonExplorerUrl : evmExplorerUrl
+
+  // Connect based on blockchain type
+  const connectWallet = () => {
+    if (blockchainType === 'ton') {
+      connectTonWallet()
+    } else {
+      connectEvmWallet()
+    }
+  }
+
+  // Disconnect based on blockchain type
+  const disconnect = () => {
+    if (blockchainType === 'ton') {
+      disconnectTon()
+    } else {
+      disconnectEvm()
+    }
+  }
 
   // Copy address to clipboard
   const copyAddress = () => {
@@ -65,25 +120,64 @@ export default function ConnectWalletButton() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // If not connected, show connect button
+  // If not connected, show blockchain selector and connect button
   if (!isConnected) {
     return (
-      <Button
-        onClick={connectWallet}
-        disabled={isConnecting}
-        className="bg-purple-600 hover:bg-purple-700 text-white"
-      >
-        <Wallet className="w-4 h-4 mr-2" />
-        {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-      </Button>
+      <div className="flex items-center gap-2">
+        {/* Blockchain Type Selector */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              {blockchainType === 'ton' ? '💎 TON' : '⟠ EVM'}
+              <ChevronDown className="w-3 h-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setBlockchainType('evm')}>
+              ⟠ EVM Chains (ETH, Polygon, BSC...)
+              {blockchainType === 'evm' && <Check className="w-4 h-4 ml-2" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setBlockchainType('ton')}>
+              💎 TON Network
+              {blockchainType === 'ton' && <Check className="w-4 h-4 ml-2" />}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Connect Button - Different for EVM vs TON */}
+        {blockchainType === 'ton' ? (
+          <TonConnectButton />
+        ) : (
+          <Button
+            onClick={connectWallet}
+            disabled={isConnecting}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <Wallet className="w-4 h-4 mr-2" />
+            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+          </Button>
+        )}
+      </div>
     )
   }
 
-  const currentNetwork = SUPPORTED_NETWORKS[chainId]
-  const isUnsupportedNetwork = !currentNetwork
+  // Get current network based on blockchain type
+  const currentNetwork = blockchainType === 'ton'
+    ? TON_NETWORKS[tonNetwork === 'testnet' ? 'ton-testnet' : 'ton-mainnet']
+    : SUPPORTED_NETWORKS[chainId]
+  const isUnsupportedNetwork = blockchainType === 'evm' && !currentNetwork
 
   return (
     <div className="flex items-center gap-2">
+      {/* Blockchain Type Badge */}
+      <Badge
+        variant="outline"
+        className={`${blockchainType === 'ton' ? 'bg-sky-500' : 'bg-gray-500'} text-white border-0 text-xs cursor-pointer`}
+        onClick={() => setBlockchainType(blockchainType === 'ton' ? 'evm' : 'ton')}
+      >
+        {blockchainType === 'ton' ? '💎 TON' : '⟠ EVM'}
+      </Badge>
+
       {/* Network Badge */}
       {currentNetwork && (
         <Badge
