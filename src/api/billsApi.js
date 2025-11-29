@@ -40,20 +40,20 @@ export const billsApi = {
   },
 
   // Create new bill
-  // AUTO-APPROVAL: Bills worden automatisch goedgekeurd
-  // In de toekomst kan hier AI-verificatie komen voor fraud detection
+  // SECURITY: ALL bills require manual approval - no auto-approval
+  // Future: Trust scoring system for smart auto-approval
   async create(billData) {
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Basic validation voor auto-approval
-    const isValid = this.validateBillForAutoApproval(billData)
+    // Validate bill data structure (no auto-approval)
+    this.validateBillStructure(billData)
 
     const { data, error } = await supabase
       .from('bills')
       .insert([{
         ...billData,
         user_id: user.id,
-        status: isValid ? 'approved' : 'pending_approval'
+        status: 'pending_approval' // ALL bills require manual review
       }])
       .select()
       .single()
@@ -62,22 +62,37 @@ export const billsApi = {
     return data
   },
 
-  // Simple validation voor auto-approval
-  validateBillForAutoApproval(billData) {
-    // Auto-approve als:
-    // 1. Bedrag onder $10,000 (lage risico)
-    // 2. Wallet adres is geldig formaat
-    // 3. Heeft een titel en category
+  // Basic validation - structure only, no auto-approval logic
+  validateBillStructure(billData) {
+    const errors = []
 
     const amount = parseFloat(billData.amount) || 0
-    const hasValidWallet = billData.payout_wallet && billData.payout_wallet.length > 10
-    const hasTitle = billData.title && billData.title.length > 2
-    const hasCategory = billData.category && billData.category.length > 0
+    if (amount <= 0) {
+      errors.push('Amount must be greater than 0')
+    }
+    if (amount > 999999999) {
+      errors.push('Amount exceeds maximum limit')
+    }
 
-    // Bills boven $10,000 gaan naar manual review
-    if (amount > 10000) return false
+    if (!billData.payout_wallet || billData.payout_wallet.length < 10) {
+      errors.push('Valid wallet address required')
+    }
 
-    return hasValidWallet && hasTitle && hasCategory
+    if (!billData.title || billData.title.length < 3) {
+      errors.push('Title must be at least 3 characters')
+    }
+
+    if (!billData.category || billData.category.length === 0) {
+      errors.push('Category is required')
+    }
+
+    if (errors.length > 0) {
+      const error = new Error(`Bill validation failed: ${errors.join(', ')}`)
+      error.details = errors
+      throw error
+    }
+
+    return true
   },
 
   // Update bill

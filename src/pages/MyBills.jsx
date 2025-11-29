@@ -19,14 +19,20 @@ import {
   Send,
   Loader2,
   Clock,
-  Wallet
+  Wallet,
+  Shield,
+  Link as LinkIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useWallet } from '../contexts/WalletContext';
+import { escrowService } from '../services/escrowService';
 
 export default function MyBills() {
   const [activeTab, setActiveTab] = useState('all');
   const [txHashInputs, setTxHashInputs] = useState({});
+  const [isReleasingEscrow, setIsReleasingEscrow] = useState({});
   const queryClient = useQueryClient();
+  const { signer, isConnected, isCorrectNetwork, getExplorerUrl, chainId } = useWallet();
 
   // Mijn bills ophalen
   const { data: bills = [], isLoading } = useQuery({
@@ -46,8 +52,8 @@ export default function MyBills() {
       await billsApi.confirmCryptoSent(billId, txHash);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['myBills']);
-      queryClient.invalidateQueries(['awaitingVerification']);
+      queryClient.invalidateQueries({ queryKey: ['myBills'] });
+      queryClient.invalidateQueries({ queryKey: ['awaitingVerification'] });
       toast.success('Crypto verzending bevestigd!');
     },
     onError: (error) => {
@@ -62,6 +68,53 @@ export default function MyBills() {
       return;
     }
     confirmCryptoMutation.mutate({ billId, txHash });
+  };
+
+  // Release escrow on-chain (confirm fiat payment received)
+  const handleReleaseEscrow = async (bill) => {
+    if (!isConnected) {
+      toast.error('Verbind eerst je wallet');
+      return;
+    }
+
+    if (!isCorrectNetwork()) {
+      toast.error('Switch naar Polygon Amoy of Polygon Mainnet');
+      return;
+    }
+
+    if (!bill.escrow_bill_id) {
+      toast.error('Geen escrow ID gevonden voor deze bill');
+      return;
+    }
+
+    setIsReleasingEscrow(prev => ({ ...prev, [bill.id]: true }));
+
+    try {
+      toast.info('Bevestig de transactie in je wallet...');
+
+      // Call escrow contract to confirm fiat payment and release crypto
+      const result = await escrowService.confirmFiatPayment(signer, bill.escrow_bill_id);
+
+      // Update database
+      await billsApi.confirmCryptoSent(bill.id, result.txHash);
+
+      queryClient.invalidateQueries({ queryKey: ['myBills'] });
+      queryClient.invalidateQueries({ queryKey: ['awaitingVerification'] });
+
+      toast.success('Escrow vrijgegeven! Crypto is naar payer gestuurd.');
+    } catch (error) {
+      console.error('Error releasing escrow:', error);
+
+      if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+        toast.error('Transactie geweigerd in wallet');
+      } else if (error.message?.includes('not claimed')) {
+        toast.error('Bill is nog niet geclaimed');
+      } else {
+        toast.error('Fout bij vrijgeven escrow: ' + error.message);
+      }
+    } finally {
+      setIsReleasingEscrow(prev => ({ ...prev, [bill.id]: false }));
+    }
   };
 
   const filteredBills = activeTab === 'all'
@@ -158,37 +211,82 @@ export default function MyBills() {
                       </div>
                     )}
 
-                    {/* TX Hash input */}
-                    <div className="space-y-2">
-                      <label className="text-sm text-gray-300">
-                        Stuur ${bill.payout_amount?.toFixed(2)} {bill.crypto_currency} naar bovenstaand adres, plak TX hash:
-                      </label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="0x... of txid..."
-                          value={txHashInputs[bill.id] || ''}
-                          onChange={(e) => setTxHashInputs({
-                            ...txHashInputs,
-                            [bill.id]: e.target.value
-                          })}
-                          className="font-mono text-sm bg-gray-900 border-gray-600 text-gray-100 flex-1"
-                        />
+                    {/* Escrow Release Button (if bill has escrow) */}
+                    {bill.escrow_bill_id ? (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-purple-950 rounded-lg border border-purple-700">
+                          <div className="flex items-center gap-2 text-sm text-purple-300 mb-2">
+                            <Shield className="w-4 h-4" />
+                            Escrow Contract Actief
+                          </div>
+                          <div className="text-xs text-purple-400 space-y-1">
+                            <div>Escrow ID: #{bill.escrow_bill_id}</div>
+                            {bill.escrow_tx_hash && (
+                              <a
+                                href={getExplorerUrl('tx', bill.escrow_tx_hash)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-purple-400 hover:text-purple-300"
+                              >
+                                <LinkIcon className="w-3 h-3" />
+                                Bekijk escrow transactie
+                              </a>
+                            )}
+                          </div>
+                        </div>
                         <Button
-                          onClick={() => handleConfirmCrypto(bill.id)}
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                          disabled={confirmCryptoMutation.isPending}
+                          onClick={() => handleReleaseEscrow(bill)}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700"
+                          disabled={isReleasingEscrow[bill.id] || !isConnected || !isCorrectNetwork()}
                         >
-                          {confirmCryptoMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                          {isReleasingEscrow[bill.id] ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Escrow vrijgeven...</>
+                          ) : !isConnected ? (
+                            'Verbind Wallet om Escrow Vrij te Geven'
                           ) : (
                             <>
-                              <Send className="w-4 h-4 mr-2" />
-                              Bevestig
+                              <Shield className="w-4 h-4 mr-2" />
+                              Fiat Ontvangen - Geef Escrow Vrij
                             </>
                           )}
                         </Button>
+                        <p className="text-xs text-gray-500 text-center">
+                          Dit geeft ${bill.payout_amount?.toFixed(2)} {bill.crypto_currency} vrij naar de payer
+                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      /* Legacy: Manual TX Hash input (for bills without escrow) */
+                      <div className="space-y-2">
+                        <label className="text-sm text-gray-300">
+                          Stuur ${bill.payout_amount?.toFixed(2)} {bill.crypto_currency} naar bovenstaand adres, plak TX hash:
+                        </label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="0x... of txid..."
+                            value={txHashInputs[bill.id] || ''}
+                            onChange={(e) => setTxHashInputs({
+                              ...txHashInputs,
+                              [bill.id]: e.target.value
+                            })}
+                            className="font-mono text-sm bg-gray-900 border-gray-600 text-gray-100 flex-1"
+                          />
+                          <Button
+                            onClick={() => handleConfirmCrypto(bill.id)}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            disabled={confirmCryptoMutation.isPending}
+                          >
+                            {confirmCryptoMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Send className="w-4 h-4 mr-2" />
+                                Bevestig
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -218,9 +316,17 @@ export default function MyBills() {
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg text-gray-100">{bill.title}</CardTitle>
-                    <Badge className={statusColors[bill.status] || 'bg-gray-100 text-gray-700'}>
-                      {bill.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {bill.escrow_bill_id && (
+                        <Badge className="bg-purple-600 text-white">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Escrow
+                        </Badge>
+                      )}
+                      <Badge className={statusColors[bill.status] || 'bg-gray-100 text-gray-700'}>
+                        {bill.status}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -232,6 +338,26 @@ export default function MyBills() {
                     <span className="text-gray-400">Payout:</span>
                     <span className="text-emerald-400 font-mono">${bill.payout_amount?.toFixed(2)} {bill.crypto_currency}</span>
                   </div>
+                  {/* Escrow Info */}
+                  {bill.escrow_bill_id && (
+                    <div className="p-2 bg-purple-950/50 rounded border border-purple-800/50 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-purple-400">Escrow ID:</span>
+                        <span className="text-purple-300 font-mono">#{bill.escrow_bill_id}</span>
+                      </div>
+                      {bill.escrow_tx_hash && (
+                        <a
+                          href={getExplorerUrl('tx', bill.escrow_tx_hash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Bekijk transactie
+                        </a>
+                      )}
+                    </div>
+                  )}
                   {bill.payer_wallet_address && (
                     <div className="text-xs text-gray-500">
                       Payer: {bill.payer_wallet_address?.slice(0, 8)}...{bill.payer_wallet_address?.slice(-6)}
@@ -241,6 +367,14 @@ export default function MyBills() {
                     <div className="text-xs text-emerald-400 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Crypto verstuurd
+                      <a
+                        href={getExplorerUrl('tx', bill.crypto_tx_to_payer)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-1 hover:underline"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     </div>
                   )}
                 </CardContent>

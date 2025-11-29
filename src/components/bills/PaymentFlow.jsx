@@ -8,9 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, CheckCircle2, Copy, Upload, Clock, Wallet } from 'lucide-react';
+import { Loader2, CheckCircle2, Copy, Upload, Clock, Wallet, AlertCircle, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { storageApi } from '../../api/storageApi';
+import { useWallet } from '../../contexts/WalletContext';
+import { escrowService } from '../../services/escrowService';
 
 /**
  * NIEUWE FLOW (Fiat → Crypto):
@@ -27,15 +29,17 @@ export default function PaymentFlow({
   bill,
   isOpen,
   onClose,
-  onClaimBill,      // Stap 1: Claim met wallet adres
+  onClaimBill,      // Stap 1: Claim met wallet adres (database update)
   onSubmitProof,    // Stap 2: Upload bewijs
-  connectedWallet,
-  walletAddress: connectedWalletAddress
 }) {
+  const { isConnected, signer, walletAddress, isCorrectNetwork, connectWallet, getExplorerUrl, chainId } = useWallet();
+
   const [step, setStep] = useState(1);
-  const [payerWalletAddress, setPayerWalletAddress] = useState(connectedWalletAddress || '');
+  const [payerWalletAddress, setPayerWalletAddress] = useState(walletAddress || '');
   const [proofFile, setProofFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [escrowClaimTxHash, setEscrowClaimTxHash] = useState(null);
+  const [escrowError, setEscrowError] = useState(null);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -49,20 +53,58 @@ export default function PaymentFlow({
     }
   };
 
-  // Stap 1: Claim de bill met je wallet adres
+  // Stap 1: Claim de bill met je wallet adres EN op de blockchain
   const handleClaim = async () => {
-    if (!payerWalletAddress || payerWalletAddress.length < 10) {
-      toast.error('Voer een geldig wallet adres in');
+    setEscrowError(null);
+    setEscrowClaimTxHash(null);
+
+    // Validate wallet connection
+    if (!isConnected) {
+      setEscrowError('Verbind eerst je wallet');
+      return;
+    }
+
+    if (!isCorrectNetwork()) {
+      setEscrowError('Switch naar Polygon Amoy of Polygon Mainnet');
+      return;
+    }
+
+    if (!signer) {
+      setEscrowError('Wallet signer niet beschikbaar. Herverbind je wallet.');
+      return;
+    }
+
+    // Check if bill has escrow
+    if (!bill.escrow_bill_id) {
+      setEscrowError('Deze bill heeft geen escrow. Neem contact op met support.');
       return;
     }
 
     setIsProcessing(true);
     try {
-      await onClaimBill(bill.id, payerWalletAddress);
+      // Step 1: Claim on-chain via escrow contract
+      toast.info('Bevestig de transactie in je wallet...');
+      const escrowResult = await escrowService.claimBill(signer, bill.escrow_bill_id);
+      setEscrowClaimTxHash(escrowResult.txHash);
+
+      // Step 2: Update database with claim info
+      await onClaimBill(bill.id, walletAddress);
+
       setStep(2);
-      toast.success('Bill geclaimed! Nu betalen.');
+      toast.success('Bill geclaimed op de blockchain! Nu betalen.');
     } catch (error) {
-      toast.error('Kon bill niet claimen: ' + error.message);
+      console.error('Error claiming bill:', error);
+
+      if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+        setEscrowError('Transactie geweigerd in wallet');
+      } else if (error.message?.includes('already claimed')) {
+        setEscrowError('Deze bill is al geclaimed');
+      } else if (error.message?.includes('Bill does not exist')) {
+        setEscrowError('Escrow bill niet gevonden op de blockchain');
+      } else {
+        setEscrowError(error.message || 'Kon bill niet claimen');
+      }
+      toast.error('Claimen mislukt');
     } finally {
       setIsProcessing(false);
     }
@@ -94,8 +136,10 @@ export default function PaymentFlow({
 
   const resetAndClose = () => {
     setStep(1);
-    setPayerWalletAddress(connectedWalletAddress || '');
+    setPayerWalletAddress(walletAddress || '');
     setProofFile(null);
+    setEscrowClaimTxHash(null);
+    setEscrowError(null);
     onClose();
   };
 
@@ -120,6 +164,53 @@ export default function PaymentFlow({
           {/* ============ STAP 1: CLAIM ============ */}
           {step === 1 && (
             <div className="space-y-4">
+              {/* Wallet Connection Status */}
+              {!isConnected ? (
+                <div className="p-4 bg-yellow-950 rounded-lg border border-yellow-800">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-500" />
+                    <div className="flex-1">
+                      <p className="text-yellow-300 font-medium">Wallet Niet Verbonden</p>
+                      <p className="text-yellow-400 text-sm">Verbind je wallet om deze bill te claimen</p>
+                    </div>
+                    <Button onClick={connectWallet} size="sm" className="bg-yellow-600 hover:bg-yellow-700">
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Verbind
+                    </Button>
+                  </div>
+                </div>
+              ) : !isCorrectNetwork() ? (
+                <div className="p-4 bg-red-950 rounded-lg border border-red-800">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <div>
+                      <p className="text-red-300 font-medium">Verkeerd Netwerk</p>
+                      <p className="text-red-400 text-sm">Switch naar Polygon Amoy (testnet) of Polygon Mainnet</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-emerald-950 rounded-lg border border-emerald-800">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    <div>
+                      <p className="text-emerald-300 font-medium">Wallet Verbonden</p>
+                      <p className="text-emerald-400 text-sm font-mono">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Escrow Error Display */}
+              {escrowError && (
+                <div className="p-4 bg-red-950 rounded-lg border border-red-800">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <p className="text-red-300">{escrowError}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Bill info */}
               <div className="p-4 bg-gray-900 rounded-lg space-y-3">
                 <div className="flex justify-between">
@@ -140,58 +231,81 @@ export default function PaymentFlow({
                 <p className="text-xs text-gray-500">
                   (Bill maker betaalt {bill.fee_percentage || 4.4}% platform fee)
                 </p>
+                {bill.escrow_bill_id && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Escrow ID:</span>
+                    <span className="text-purple-400 font-mono">#{bill.escrow_bill_id}</span>
+                  </div>
+                )}
               </div>
 
-              {/* Wallet input */}
+              {/* Wallet address display (auto-filled from connected wallet) */}
               <div className="space-y-2">
                 <Label className="text-gray-300 flex items-center gap-2">
                   <Wallet className="w-4 h-4" />
                   Jouw Wallet Adres (voor crypto ontvangst)
                 </Label>
                 <Input
-                  placeholder="0x... of bc1... of T..."
-                  value={payerWalletAddress}
+                  placeholder="0x..."
+                  value={payerWalletAddress || walletAddress || ''}
                   onChange={(e) => setPayerWalletAddress(e.target.value)}
                   className="font-mono text-sm bg-gray-900 border-gray-600 text-gray-100"
+                  disabled={!isConnected}
                 />
                 <p className="text-xs text-gray-400">
-                  Hier ontvang je ${payerReceives?.toFixed(2)} {bill.crypto_currency}
+                  Hier ontvang je ${payerReceives?.toFixed(2)} {bill.crypto_currency} na bevestiging
                 </p>
               </div>
 
-              {connectedWallet && !payerWalletAddress && (
+              {isConnected && walletAddress && !payerWalletAddress && (
                 <Button
                   variant="outline"
-                  onClick={() => setPayerWalletAddress(connectedWalletAddress)}
+                  onClick={() => setPayerWalletAddress(walletAddress)}
                   className="w-full border-gray-600 text-gray-300"
                 >
-                  Gebruik verbonden wallet ({connectedWalletAddress?.slice(0,6)}...{connectedWalletAddress?.slice(-4)})
+                  Gebruik verbonden wallet ({walletAddress?.slice(0,6)}...{walletAddress?.slice(-4)})
                 </Button>
               )}
 
               <Button
                 onClick={handleClaim}
                 className="w-full bg-purple-600 hover:bg-purple-700"
-                disabled={!payerWalletAddress || isProcessing}
+                disabled={!isConnected || !isCorrectNetwork() || isProcessing}
               >
                 {isProcessing ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Claimen...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Claimen op blockchain...</>
+                ) : !isConnected ? (
+                  'Verbind Wallet om te Claimen'
                 ) : (
-                  'Claim & Ga naar Betaling'
+                  'Claim Bill & Ga naar Betaling'
                 )}
               </Button>
+
+              <p className="text-xs text-gray-500 text-center">
+                Deze actie registreert je claim op de blockchain via het escrow contract
+              </p>
             </div>
           )}
 
           {/* ============ STAP 2: BETAAL FIAT ============ */}
           {step === 2 && (
             <div className="space-y-4">
-              {/* Success message */}
-              <div className="p-3 bg-emerald-950 border border-emerald-700 rounded-lg">
+              {/* Success message with escrow tx */}
+              <div className="p-3 bg-emerald-950 border border-emerald-700 rounded-lg space-y-2">
                 <p className="text-sm text-emerald-300 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
-                  Bill geclaimed! Nu betalen via onderstaande instructies.
+                  Bill geclaimed op de blockchain! Nu betalen via onderstaande instructies.
                 </p>
+                {escrowClaimTxHash && (
+                  <a
+                    href={getExplorerUrl('tx', escrowClaimTxHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-400 flex items-center gap-1 hover:underline"
+                  >
+                    Bekijk transactie <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
               </div>
 
               {/* Betaalinstructies */}

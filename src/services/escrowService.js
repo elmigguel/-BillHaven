@@ -69,7 +69,10 @@ export const escrowService = {
       };
     }
 
-    return { billId: null, txHash: receipt.hash };
+    // Event not found - this shouldn't happen in normal operation
+    // Still return txHash so user can track the transaction
+    console.error('BillCreated event not found in receipt. This may indicate a contract issue.');
+    throw new Error('Bill created on blockchain but could not retrieve bill ID. Transaction: ' + receipt.hash);
   },
 
   /**

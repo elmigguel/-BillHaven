@@ -9,8 +9,8 @@ export const ESCROW_ADDRESSES = {
   // Polygon Mainnet (update after deployment)
   137: "",
 
-  // Polygon Amoy Testnet (update after deployment)
-  80002: "",
+  // Polygon Amoy Testnet - DEPLOYED 2025-11-28
+  80002: "0x8beED27aA6d28FE42a9e792d81046DD1337a8240",
 
   // Local hardhat (for testing)
   31337: ""

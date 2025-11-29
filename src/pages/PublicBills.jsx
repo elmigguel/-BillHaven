@@ -16,9 +16,10 @@ import {
   DollarSign,
   ExternalLink
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import PaymentFlow from '../components/bills/PaymentFlow';
-import { useWallet } from '../Layout';
+import { useWallet } from '../contexts/WalletContext';
 
 const categoryColors = {
   rent: 'bg-purple-100 text-purple-700',
@@ -34,7 +35,7 @@ export default function PublicBills() {
   const [selectedBill, setSelectedBill] = useState(null);
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
   const queryClient = useQueryClient();
-  const { connectedWallet, walletAddress } = useWallet() || {};
+  const { isConnected, walletAddress } = useWallet();
   const { user } = useAuth();
 
   const { data: bills = [], isLoading } = useQuery({
@@ -52,7 +53,12 @@ export default function PublicBills() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['publicBills']);
+      queryClient.invalidateQueries({ queryKey: ['publicBills'] });
+      toast.success('Claim geannuleerd');
+    },
+    onError: (error) => {
+      console.error('Cancel claim error:', error);
+      toast.error('Kon claim niet annuleren: ' + error.message);
     }
   });
 
@@ -62,7 +68,12 @@ export default function PublicBills() {
       await billsApi.claimWithWallet(billId, payerWalletAddress);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['publicBills']);
+      queryClient.invalidateQueries({ queryKey: ['publicBills'] });
+      toast.success('Bill succesvol geclaimd!');
+    },
+    onError: (error) => {
+      console.error('Claim bill error:', error);
+      toast.error('Kon bill niet claimen: ' + error.message);
     }
   });
 
@@ -72,9 +83,14 @@ export default function PublicBills() {
       await billsApi.submitPaymentProof(billId, proofUrl);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['publicBills']);
+      queryClient.invalidateQueries({ queryKey: ['publicBills'] });
       setSelectedBill(null);
       setShowPaymentFlow(false);
+      toast.success('Betaalbewijs succesvol ingediend!');
+    },
+    onError: (error) => {
+      console.error('Submit proof error:', error);
+      toast.error('Kon bewijs niet uploaden: ' + error.message);
     }
   });
 
@@ -220,8 +236,6 @@ export default function PublicBills() {
         }}
         onClaimBill={handleClaimBill}
         onSubmitProof={handleSubmitProof}
-        connectedWallet={connectedWallet}
-        walletAddress={walletAddress}
       />
     </div>
   );
