@@ -11,6 +11,10 @@ const pageUrlMap = {
   FeeStructure: '/fee-structure',
   PublicBills: '/public-bills',
   Settings: '/settings',
+  DisputeAdmin: '/dispute-admin',
+  Referral: '/referral',
+  Login: '/login',
+  Signup: '/signup',
 };
 
 export const createPageUrl = (pageName) => {
