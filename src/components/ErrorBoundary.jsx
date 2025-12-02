@@ -24,8 +24,8 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      // ALWAYS show detailed error for debugging (even in production temporarily)
-      const showDetails = true; // Set to false after debugging is complete
+      // Environment-based error details - NEVER show in production
+      const showDetails = import.meta.env.DEV || import.meta.env.MODE === 'development';
 
       if (showDetails) {
         return (
@@ -80,14 +80,14 @@ class ErrorBoundary extends React.Component {
         <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
           <div className="bg-red-900/50 border border-red-700 rounded-lg p-6 max-w-lg w-full">
             <h1 className="text-xl font-bold text-red-400 mb-4">
-              Er is iets misgegaan
+              Something went wrong
             </h1>
             <p className="text-gray-300 mb-4">
-              De pagina kon niet geladen worden. Probeer te refreshen of ga terug naar home.
+              The page could not be loaded. Try refreshing or go back to home.
             </p>
             {this.state.error && (
               <details className="mb-4">
-                <summary className="text-red-400 cursor-pointer">Technische details</summary>
+                <summary className="text-red-400 cursor-pointer">Technical details</summary>
                 <pre className="mt-2 p-2 bg-gray-800 rounded text-xs text-gray-400 overflow-auto">
                   {this.state.error.toString()}
                   {this.state.errorInfo?.componentStack}
@@ -105,7 +105,7 @@ class ErrorBoundary extends React.Component {
                 onClick={() => window.location.href = '/'}
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded"
               >
-                Naar Home
+                Go Home
               </button>
             </div>
           </div>

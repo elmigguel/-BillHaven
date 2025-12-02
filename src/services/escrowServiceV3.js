@@ -141,16 +141,16 @@ export const TrustLevelLabels = {
 
 // V3 Contract Addresses
 export const ESCROW_V3_ADDRESSES = {
-  // Mainnets
-  137: '',    // Polygon Mainnet - PENDING
-  1: '',      // Ethereum - PENDING
+  // Mainnets - DEPLOYED
+  137: '0x8beED27aA6d28FE42a9e792d81046DD1337a8240',    // Polygon Mainnet - LIVE ✅
+  1: '',      // Ethereum - PENDING (high gas, deploy when needed)
   56: '',     // BSC - PENDING
   42161: '',  // Arbitrum - PENDING
   10: '',     // Optimism - PENDING
   8453: '',   // Base - PENDING
 
   // Testnets
-  80002: '',  // Polygon Amoy - PENDING (deploy with deployV3.cjs)
+  80002: '',  // Polygon Amoy - PENDING
   11155111: '', // Sepolia - PENDING
 };
 

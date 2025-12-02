@@ -151,7 +151,7 @@ export default function ConnectWalletButton() {
           <Button
             onClick={connectWallet}
             disabled={isConnecting}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
           >
             <Wallet className="w-4 h-4 mr-2" />
             {isConnecting ? 'Connecting...' : 'Connect Wallet'}

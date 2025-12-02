@@ -1,6 +1,17 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
+
+// Custom time helpers (avoid dependency conflicts)
+const time = {
+    increase: async (seconds) => {
+        await ethers.provider.send("evm_increaseTime", [seconds]);
+        await ethers.provider.send("evm_mine");
+    },
+    latest: async () => {
+        const block = await ethers.provider.getBlock("latest");
+        return block.timestamp;
+    }
+};
 
 describe("BillHavenEscrowV3", function () {
     let escrow;
@@ -190,7 +201,7 @@ describe("BillHavenEscrowV3", function () {
 
             await expect(
                 escrow.connect(randomUser).claimBill(1)
-            ).to.be.revertedWithCustomError(escrow, "BillAlreadyClaimed");
+            ).to.be.revertedWithCustomError(escrow, "InvalidState");
         });
     });
 

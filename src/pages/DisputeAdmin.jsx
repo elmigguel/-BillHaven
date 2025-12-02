@@ -50,12 +50,12 @@ export default function DisputeAdmin() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['disputedBills']);
-      toast.success('Dispute opgelost!');
+      queryClient.invalidateQueries({ queryKey: ['disputedBills'] });
+      toast.success('Dispute resolved!');
       setResolvingId(null);
     },
     onError: (error) => {
-      toast.error('Fout: ' + error.message);
+      toast.error('Error: ' + error.message);
       setResolvingId(null);
     }
   });
@@ -77,7 +77,7 @@ export default function DisputeAdmin() {
       // Update database
       await resolveDbMutation.mutateAsync({ billId: bill.id, releaseToPayer });
     } catch (error) {
-      toast.error('Fout bij resolve: ' + error.message);
+      toast.error('Error resolving: ' + error.message);
       setResolvingId(null);
     }
   };
@@ -88,8 +88,8 @@ export default function DisputeAdmin() {
         <Card className="border-red-700 bg-red-950/30">
           <CardContent className="p-6 text-center">
             <Shield className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-red-400 mb-2">Geen Toegang</h2>
-            <p className="text-gray-400">Deze pagina is alleen voor admins.</p>
+            <h2 className="text-xl font-bold text-red-400 mb-2">No Access</h2>
+            <p className="text-gray-400">This page is for admins only.</p>
           </CardContent>
         </Card>
       </div>
@@ -103,14 +103,14 @@ export default function DisputeAdmin() {
           <Link to={createPageUrl('Dashboard')}>
             <Button variant="ghost" className="mb-2 text-gray-300 hover:bg-gray-800">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Terug
+              Back
             </Button>
           </Link>
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-8 h-8 text-amber-400" />
             <div>
               <h1 className="text-3xl font-bold text-gray-100">Dispute Admin</h1>
-              <p className="text-gray-400">Beheer en los disputes op</p>
+              <p className="text-gray-400">Manage and resolve disputes</p>
             </div>
           </div>
         </div>
@@ -151,7 +151,7 @@ export default function DisputeAdmin() {
                   {/* Bill Info */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-400 block">Bedrag:</span>
+                      <span className="text-gray-400 block">Amount:</span>
                       <span className="text-white font-mono">${bill.amount?.toFixed(2)}</span>
                     </div>
                     <div>
@@ -171,13 +171,13 @@ export default function DisputeAdmin() {
                   {/* Partijen */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-900 rounded-lg">
                     <div>
-                      <p className="text-xs text-gray-400 mb-1">Bill Maker (krijgt fiat):</p>
+                      <p className="text-xs text-gray-400 mb-1">Bill Maker (receives fiat):</p>
                       <code className="text-xs text-purple-400 break-all">
                         {bill.payout_wallet || 'N/A'}
                       </code>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400 mb-1">Payer (krijgt crypto):</p>
+                      <p className="text-xs text-gray-400 mb-1">Payer (receives crypto):</p>
                       <code className="text-xs text-emerald-400 break-all">
                         {bill.payer_wallet_address || 'N/A'}
                       </code>
@@ -187,7 +187,7 @@ export default function DisputeAdmin() {
                   {/* Payment Proof */}
                   {bill.fiat_payment_proof_url && (
                     <div className="p-3 bg-blue-950 rounded-lg">
-                      <p className="text-sm text-blue-300 mb-2">Bewijs van Fiat Betaling:</p>
+                      <p className="text-sm text-blue-300 mb-2">Fiat Payment Proof:</p>
                       <a
                         href={bill.fiat_payment_proof_url}
                         target="_blank"
@@ -195,7 +195,7 @@ export default function DisputeAdmin() {
                         className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        Bekijk betaalbewijs
+                        View payment proof
                       </a>
                     </div>
                   )}
@@ -203,7 +203,7 @@ export default function DisputeAdmin() {
                   {/* Dispute Reason */}
                   {bill.dispute_reason && (
                     <div className="p-3 bg-red-950 rounded-lg">
-                      <p className="text-sm text-red-300 mb-1">Dispute Reden:</p>
+                      <p className="text-sm text-red-300 mb-1">Dispute Reason:</p>
                       <p className="text-sm text-white">{bill.dispute_reason}</p>
                     </div>
                   )}
@@ -230,7 +230,7 @@ export default function DisputeAdmin() {
                       ) : (
                         <CheckCircle2 className="w-4 h-4 mr-2" />
                       )}
-                      Release naar Payer
+                      Release to Payer
                     </Button>
                     <Button
                       onClick={() => handleResolve(bill, false)}
@@ -243,7 +243,7 @@ export default function DisputeAdmin() {
                       ) : (
                         <XCircle className="w-4 h-4 mr-2" />
                       )}
-                      Refund naar Bill Maker
+                      Refund to Bill Maker
                     </Button>
                   </div>
                 </CardContent>
@@ -253,8 +253,8 @@ export default function DisputeAdmin() {
         ) : (
           <div className="text-center py-12 bg-gray-800 rounded-lg border-2 border-dashed border-gray-700">
             <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-200 mb-2">Geen Open Disputes</h3>
-            <p className="text-gray-400">Alle disputes zijn opgelost!</p>
+            <h3 className="text-lg font-semibold text-gray-200 mb-2">No Open Disputes</h3>
+            <p className="text-gray-400">All disputes are resolved!</p>
           </div>
         )}
       </div>

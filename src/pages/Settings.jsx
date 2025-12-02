@@ -45,8 +45,8 @@ export default function Settings() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['platformSettings']);
-      toast.success('Instellingen opgeslagen');
+      queryClient.invalidateQueries({ queryKey: ['platformSettings'] });
+      toast.success('Settings saved');
     }
   });
 
@@ -56,7 +56,7 @@ export default function Settings() {
         <Link to={createPageUrl('Dashboard')}>
           <Button variant="ghost" className="mb-6 text-gray-300 hover:bg-gray-800">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Terug naar Dashboard
+            Back to Dashboard
           </Button>
         </Link>
 
@@ -64,7 +64,7 @@ export default function Settings() {
           <CardHeader className="bg-gradient-to-br from-purple-950 to-gray-900 border-b border-gray-700">
             <CardTitle className="text-2xl text-gray-100 flex items-center gap-2">
               <Wallet className="w-6 h-6" />
-              Platform Instellingen
+              Platform Settings
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
@@ -75,7 +75,7 @@ export default function Settings() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="feeWallet" className="text-gray-300">Fee Wallet Adres</Label>
+                  <Label htmlFor="feeWallet" className="text-gray-300">Fee Wallet Address</Label>
                   <Input
                     id="feeWallet"
                     placeholder="0x..."
@@ -84,7 +84,7 @@ export default function Settings() {
                     className="font-mono text-sm bg-gray-900 border-gray-600 text-gray-100"
                   />
                   <p className="text-xs text-gray-400">
-                    Alle platform fees worden naar dit adres gestuurd
+                    All platform fees will be sent to this address
                   </p>
                 </div>
 
@@ -104,17 +104,17 @@ export default function Settings() {
                   </Select>
                 </div>
 
-                <Button 
+                <Button
                   onClick={() => saveMutation.mutate()}
                   disabled={!feeWallet || saveMutation.isPending}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700"
                 >
                   {saveMutation.isPending ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <Save className="w-4 h-4 mr-2" />
                   )}
-                  Opslaan
+                  Save
                 </Button>
               </>
             )}

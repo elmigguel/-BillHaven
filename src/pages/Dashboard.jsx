@@ -89,6 +89,7 @@ export default function Dashboard() {
             icon={DollarSign}
             color="bg-purple-500"
             subtitle={`${myBills.length} bills`}
+            index={0}
           />
           <StatsCard
             title="Pending Review"
@@ -96,6 +97,7 @@ export default function Dashboard() {
             icon={Clock}
             color="bg-amber-500"
             subtitle={`$${pendingBills.reduce((s, b) => s + (b.amount || 0), 0).toFixed(2)}`}
+            index={1}
           />
           <StatsCard
             title="Approved"
@@ -103,6 +105,7 @@ export default function Dashboard() {
             icon={CheckCircle2}
             color="bg-cyan-500"
             subtitle={`$${approvedBills.reduce((s, b) => s + (b.amount || 0), 0).toFixed(2)}`}
+            index={2}
           />
           <StatsCard
             title="Total Paid"
@@ -110,6 +113,7 @@ export default function Dashboard() {
             icon={Wallet}
             color="bg-emerald-500"
             subtitle={`${paidBills.length} transactions`}
+            index={3}
           />
         </div>
 
@@ -161,7 +165,7 @@ export default function Dashboard() {
               <h3 className="text-lg font-semibold text-gray-200 mb-2">No bills yet</h3>
               <p className="text-gray-400 mb-4">Get started by submitting your first bill</p>
               <Link to={createPageUrl('SubmitBill')}>
-                <Button className="bg-purple-600 hover:bg-purple-700">
+                <Button className="bg-indigo-600 hover:bg-indigo-700">
                   <PlusCircle className="w-4 h-4 mr-2" />
                   Submit Bill
                 </Button>

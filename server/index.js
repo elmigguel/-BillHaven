@@ -1,0 +1,510 @@
+/**
+ * BillHaven Backend Server
+ * Handles webhooks for Stripe and OpenNode payment confirmations
+ */
+
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import Stripe from 'stripe';
+import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+
+// Simple in-memory rate limiter
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 30; // 30 requests per minute
+
+function rateLimit(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, { count: 1, startTime: now });
+    return next();
+  }
+
+  const record = rateLimitMap.get(ip);
+  if (now - record.startTime > RATE_LIMIT_WINDOW) {
+    record.count = 1;
+    record.startTime = now;
+    return next();
+  }
+
+  if (record.count >= RATE_LIMIT_MAX) {
+    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+  }
+
+  record.count++;
+  next();
+}
+
+// Load environment variables
+dotenv.config({ path: '../.env' });
+
+// ==========================================
+// CRITICAL: Environment Variable Validation
+// ==========================================
+const REQUIRED_ENV_VARS = [
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'VITE_OPENNODE_API_KEY',
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_ANON_KEY'
+];
+
+const MISSING_ENV_VARS = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
+
+if (MISSING_ENV_VARS.length > 0) {
+  console.error('\n❌ CRITICAL ERROR: Missing required environment variables:');
+  MISSING_ENV_VARS.forEach(varName => {
+    console.error(`   - ${varName}`);
+  });
+  console.error('\n📝 Please add these to your .env file (see .env.example for reference)\n');
+  process.exit(1);
+}
+
+// Validate webhook secret format (Stripe webhook secrets start with whsec_)
+if (!process.env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_')) {
+  console.warn('\n⚠️  WARNING: STRIPE_WEBHOOK_SECRET does not start with "whsec_"');
+  console.warn('   This might not be a valid Stripe webhook secret.');
+  console.warn('   Get the correct secret from: https://dashboard.stripe.com/webhooks\n');
+}
+
+console.log('✅ Environment variables validated successfully');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Initialize Supabase
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY
+);
+
+// CORS configuration
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://billhaven-8c40tay2x-mikes-projects-f9ae2848.vercel.app',
+    /\.vercel\.app$/
+  ],
+  credentials: true
+}));
+
+// Stripe webhook needs raw body
+app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  // SECURITY: Always require webhook signature verification
+  if (!endpointSecret) {
+    console.error('CRITICAL: STRIPE_WEBHOOK_SECRET not configured');
+    return res.status(500).json({ error: 'Webhook configuration error' });
+  }
+
+  try {
+    // Verify webhook signature - REQUIRED for security
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case 'payment_intent.succeeded':
+      await handlePaymentSuccess(event.data.object);
+      break;
+
+    case 'payment_intent.payment_failed':
+      await handlePaymentFailure(event.data.object);
+      break;
+
+    case 'charge.dispute.created':
+      await handleDisputeCreated(event.data.object);
+      break;
+
+    case 'charge.refunded':
+      await handleRefund(event.data.object);
+      break;
+
+    default:
+      console.log(`Unhandled event type: ${event.type}`);
+  }
+
+  res.json({ received: true });
+});
+
+// OpenNode webhook (Lightning payments) - with HMAC verification
+app.post('/webhooks/opennode', express.json(), async (req, res) => {
+  const { id, status, hashed_order, callback_url } = req.body;
+  const receivedSignature = req.headers['x-opennode-signature'];
+  const apiKey = process.env.VITE_OPENNODE_API_KEY;
+
+  // SECURITY: Verify OpenNode webhook signature - REQUIRED for production
+  if (!apiKey) {
+    console.error('CRITICAL: OPENNODE_API_KEY not configured for signature verification');
+    return res.status(500).json({ error: 'Webhook configuration error - API key required' });
+  }
+
+  if (!receivedSignature) {
+    console.error('OpenNode webhook missing signature header');
+    return res.status(401).json({ error: 'Missing signature' });
+  }
+
+  const payload = JSON.stringify(req.body);
+  const expectedSignature = crypto
+    .createHmac('sha256', apiKey)
+    .update(payload)
+    .digest('hex');
+
+  // Constant-time comparison to prevent timing attacks
+  const isValid = receivedSignature.length === expectedSignature.length &&
+    crypto.timingSafeEqual(
+      Buffer.from(receivedSignature),
+      Buffer.from(expectedSignature)
+    );
+
+  if (!isValid) {
+    console.error('OpenNode webhook signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  console.log('OpenNode webhook received:', { id, status });
+
+  try {
+    if (status === 'paid') {
+      await handleLightningPaymentSuccess(id, req.body);
+    } else if (status === 'processing') {
+      console.log('Lightning payment processing:', id);
+    } else if (status === 'underpaid' || status === 'expired') {
+      await handleLightningPaymentFailure(id, status, req.body);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('OpenNode webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+// JSON parser for other routes
+app.use(express.json());
+
+// Health check endpoint with service status
+app.get('/health', async (req, res) => {
+  const status = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {}
+  };
+
+  // Check Supabase connection
+  try {
+    const { error } = await supabase.from('bills').select('count', { count: 'exact', head: true });
+    status.services.supabase = error ? 'error' : 'ok';
+  } catch (error) {
+    status.services.supabase = 'error';
+  }
+
+  // Check Stripe API
+  try {
+    await stripe.paymentIntents.list({ limit: 1 });
+    status.services.stripe = 'ok';
+  } catch (error) {
+    status.services.stripe = 'error';
+  }
+
+  // Check OpenNode API
+  try {
+    const response = await fetch('https://api.opennode.com/v1/currencies', {
+      headers: {
+        'Authorization': process.env.VITE_OPENNODE_API_KEY
+      }
+    });
+    status.services.opennode = response.ok ? 'ok' : 'error';
+  } catch (error) {
+    status.services.opennode = 'error';
+  }
+
+  // Set overall status
+  const allServicesOk = Object.values(status.services).every(s => s === 'ok');
+  status.status = allServicesOk ? 'ok' : 'degraded';
+
+  res.json(status);
+});
+
+// Create Stripe PaymentIntent - with rate limiting
+app.post('/api/create-payment-intent', rateLimit, async (req, res) => {
+  try {
+    const { amount, currency, billId, paymentMethod } = req.body;
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Stripe uses cents
+      currency: currency.toLowerCase(),
+      payment_method_types: getPaymentMethodTypes(paymentMethod),
+      metadata: {
+        billId,
+        platform: 'BillHaven'
+      }
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    });
+  } catch (error) {
+    console.error('PaymentIntent creation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create OpenNode Lightning invoice - with rate limiting
+app.post('/api/create-lightning-invoice', rateLimit, async (req, res) => {
+  try {
+    const { amount, currency, billId, description } = req.body;
+
+    const response = await fetch('https://api.opennode.com/v1/charges', {
+      method: 'POST',
+      headers: {
+        'Authorization': process.env.VITE_OPENNODE_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount,
+        currency: currency.toUpperCase(),
+        description: description || `BillHaven Payment - Bill #${billId}`,
+        order_id: billId,
+        callback_url: `${process.env.SERVER_URL || 'http://localhost:3001'}/webhooks/opennode`,
+        success_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/success`,
+        auto_settle: false // Keep in BTC for immediate settlement
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'OpenNode API error');
+    }
+
+    res.json({
+      invoiceId: data.data.id,
+      lightningInvoice: data.data.lightning_invoice.payreq,
+      btcAddress: data.data.chain_invoice?.address,
+      amount: data.data.amount,
+      expiresAt: data.data.expires_at
+    });
+  } catch (error) {
+    console.error('Lightning invoice creation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper functions
+function getPaymentMethodTypes(method) {
+  switch (method) {
+    case 'IDEAL':
+      return ['ideal'];
+    case 'SEPA':
+      return ['sepa_debit'];
+    case 'BANCONTACT':
+      return ['bancontact'];
+    case 'SOFORT':
+      return ['sofort'];
+    case 'KLARNA':
+      return ['klarna'];
+    case 'GOOGLE_PAY':
+      return ['google_pay'];
+    case 'ALIPAY':
+      return ['alipay'];
+    case 'REVOLUT_PAY':
+      return ['revolut_pay'];
+    case 'CREDIT_CARD':
+      return ['card'];
+    default:
+      return ['card', 'ideal', 'sepa_debit', 'klarna', 'google_pay'];
+  }
+}
+
+async function handlePaymentSuccess(paymentIntent) {
+  const billId = paymentIntent.metadata.billId;
+  console.log(`Payment succeeded for bill ${billId}:`, paymentIntent.id);
+
+  try {
+    // Update bill status in Supabase
+    const { error } = await supabase
+      .from('bills')
+      .update({
+        payment_status: 'PAID',
+        payment_id: paymentIntent.id,
+        paid_at: new Date().toISOString()
+      })
+      .eq('id', billId);
+
+    if (error) {
+      console.error('Failed to update bill status:', error);
+    }
+
+    // Log the transaction
+    await supabase.from('transactions').insert({
+      bill_id: billId,
+      type: 'PAYMENT_RECEIVED',
+      amount: paymentIntent.amount / 100,
+      currency: paymentIntent.currency.toUpperCase(),
+      provider: 'stripe',
+      provider_id: paymentIntent.id,
+      status: 'COMPLETED'
+    });
+
+  } catch (error) {
+    console.error('Error processing payment success:', error);
+  }
+}
+
+async function handlePaymentFailure(paymentIntent) {
+  const billId = paymentIntent.metadata.billId;
+  console.log(`Payment failed for bill ${billId}:`, paymentIntent.id);
+
+  try {
+    await supabase
+      .from('bills')
+      .update({
+        payment_status: 'FAILED',
+        payment_error: paymentIntent.last_payment_error?.message
+      })
+      .eq('id', billId);
+
+  } catch (error) {
+    console.error('Error processing payment failure:', error);
+  }
+}
+
+async function handleDisputeCreated(dispute) {
+  console.log('DISPUTE CREATED:', dispute.id);
+
+  // This is CRITICAL - a chargeback has been initiated
+  try {
+    // Find the bill by payment_id
+    const { data: bill } = await supabase
+      .from('bills')
+      .select('*')
+      .eq('payment_id', dispute.payment_intent)
+      .single();
+
+    if (bill) {
+      // FREEZE the escrow immediately
+      await supabase
+        .from('bills')
+        .update({
+          payment_status: 'DISPUTED',
+          dispute_id: dispute.id,
+          disputed_at: new Date().toISOString()
+        })
+        .eq('id', bill.id);
+
+      // Alert admin
+      console.error(`ALERT: Dispute created for bill ${bill.id}, amount: ${dispute.amount / 100}`);
+
+      // TODO: Send admin notification (email/Telegram)
+    }
+  } catch (error) {
+    console.error('Error handling dispute:', error);
+  }
+}
+
+async function handleRefund(charge) {
+  console.log('Refund processed:', charge.id);
+
+  try {
+    const { data: bill } = await supabase
+      .from('bills')
+      .select('*')
+      .eq('payment_id', charge.payment_intent)
+      .single();
+
+    if (bill) {
+      await supabase
+        .from('bills')
+        .update({
+          payment_status: 'REFUNDED',
+          refunded_at: new Date().toISOString()
+        })
+        .eq('id', bill.id);
+    }
+  } catch (error) {
+    console.error('Error handling refund:', error);
+  }
+}
+
+async function handleLightningPaymentSuccess(chargeId, data) {
+  const billId = data.order_id;
+  console.log(`Lightning payment succeeded for bill ${billId}:`, chargeId);
+
+  try {
+    // Lightning payments are INSTANT and IRREVERSIBLE
+    const { error } = await supabase
+      .from('bills')
+      .update({
+        payment_status: 'PAID',
+        payment_id: chargeId,
+        paid_at: new Date().toISOString(),
+        // Lightning = instant release (no hold period needed)
+        can_release_at: new Date().toISOString()
+      })
+      .eq('id', billId);
+
+    if (error) {
+      console.error('Failed to update bill status:', error);
+    }
+
+    // Log the transaction
+    await supabase.from('transactions').insert({
+      bill_id: billId,
+      type: 'LIGHTNING_PAYMENT_RECEIVED',
+      amount: data.fiat_value,
+      currency: 'BTC',
+      provider: 'opennode',
+      provider_id: chargeId,
+      status: 'COMPLETED',
+      metadata: {
+        sats: data.amount,
+        lightning_invoice: data.lightning_invoice?.payreq
+      }
+    });
+
+  } catch (error) {
+    console.error('Error processing lightning payment:', error);
+  }
+}
+
+async function handleLightningPaymentFailure(chargeId, status, data) {
+  const billId = data.order_id;
+  console.log(`Lightning payment ${status} for bill ${billId}:`, chargeId);
+
+  try {
+    await supabase
+      .from('bills')
+      .update({
+        payment_status: status.toUpperCase(),
+        payment_error: `Lightning payment ${status}`
+      })
+      .eq('id', billId);
+
+  } catch (error) {
+    console.error('Error processing lightning payment failure:', error);
+  }
+}
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`BillHaven Backend Server running on port ${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Stripe webhook: POST /webhooks/stripe`);
+  console.log(`OpenNode webhook: POST /webhooks/opennode`);
+});

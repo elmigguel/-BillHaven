@@ -63,17 +63,17 @@ export default function MyBills() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBills'] });
       queryClient.invalidateQueries({ queryKey: ['awaitingVerification'] });
-      toast.success('Crypto verzending bevestigd!');
+      toast.success('Crypto transfer confirmed!');
     },
     onError: (error) => {
-      toast.error('Fout: ' + error.message);
+      toast.error('Error: ' + error.message);
     }
   });
 
   const handleConfirmCrypto = (billId) => {
     const txHash = txHashInputs[billId];
     if (!txHash || txHash.length < 10) {
-      toast.error('Voer een geldige transaction hash in');
+      toast.error('Enter a valid transaction hash');
       return;
     }
     confirmCryptoMutation.mutate({ billId, txHash });
@@ -82,24 +82,24 @@ export default function MyBills() {
   // Release escrow on-chain (confirm fiat payment received)
   const handleReleaseEscrow = async (bill) => {
     if (!isConnected) {
-      toast.error('Verbind eerst je wallet');
+      toast.error('Connect your wallet first');
       return;
     }
 
     if (!isCorrectNetwork()) {
-      toast.error('Switch naar Polygon Amoy of Polygon Mainnet');
+      toast.error('Switch to Polygon Amoy or Polygon Mainnet');
       return;
     }
 
     if (!bill.escrow_bill_id) {
-      toast.error('Geen escrow ID gevonden voor deze bill');
+      toast.error('No escrow ID found for this bill');
       return;
     }
 
     setIsReleasingEscrow(prev => ({ ...prev, [bill.id]: true }));
 
     try {
-      toast.info('Bevestig de transactie in je wallet...');
+      toast.info('Confirm the transaction in your wallet...');
 
       // Call escrow contract to confirm fiat payment and release crypto
       const result = await escrowService.confirmFiatPayment(signer, bill.escrow_bill_id);
@@ -110,16 +110,16 @@ export default function MyBills() {
       queryClient.invalidateQueries({ queryKey: ['myBills'] });
       queryClient.invalidateQueries({ queryKey: ['awaitingVerification'] });
 
-      toast.success('Escrow vrijgegeven! Crypto is naar payer gestuurd.');
+      toast.success('Escrow released! Crypto has been sent to the payer.');
     } catch (error) {
       console.error('Error releasing escrow:', error);
 
       if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
-        toast.error('Transactie geweigerd in wallet');
+        toast.error('Transaction rejected in wallet');
       } else if (error.message?.includes('not claimed')) {
-        toast.error('Bill is nog niet geclaimed');
+        toast.error('Bill has not been claimed yet');
       } else {
-        toast.error('Fout bij vrijgeven escrow: ' + error.message);
+        toast.error('Error releasing escrow: ' + error.message);
       }
     } finally {
       setIsReleasingEscrow(prev => ({ ...prev, [bill.id]: false }));
@@ -147,15 +147,15 @@ export default function MyBills() {
             <Link to={createPageUrl('Dashboard')}>
               <Button variant="ghost" className="mb-2 text-gray-300 hover:bg-gray-800">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Terug
+                Back
               </Button>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-100">Mijn Bills</h1>
+            <h1 className="text-3xl font-bold text-gray-100">My Bills</h1>
           </div>
           <Link to={createPageUrl('SubmitBill')}>
-            <Button className="bg-purple-600 hover:bg-purple-700">
+            <Button className="bg-indigo-600 hover:bg-indigo-700">
               <PlusCircle className="w-4 h-4 mr-2" />
-              Nieuwe Bill
+              New Bill
             </Button>
           </Link>
         </div>
@@ -166,7 +166,7 @@ export default function MyBills() {
             <div className="flex items-center gap-2 mb-4">
               <AlertCircle className="w-5 h-5 text-amber-400" />
               <h2 className="text-xl font-bold text-amber-400">
-                Actie Vereist: {awaitingVerification.length} bill(s) wachten op crypto
+                Action Required: {awaitingVerification.length} bill(s) waiting for crypto
               </h2>
             </div>
 
@@ -186,11 +186,11 @@ export default function MyBills() {
                     {/* Info */}
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-400">Bedrag:</span>
+                        <span className="text-gray-400">Amount:</span>
                         <span className="text-white ml-2">${bill.amount?.toFixed(2)}</span>
                       </div>
                       <div>
-                        <span className="text-gray-400">Te sturen:</span>
+                        <span className="text-gray-400">To send:</span>
                         <span className="text-emerald-400 ml-2">${bill.payout_amount?.toFixed(2)} {bill.crypto_currency}</span>
                       </div>
                     </div>
@@ -204,10 +204,10 @@ export default function MyBills() {
                       <code className="text-xs text-purple-300 break-all">{bill.payer_wallet_address}</code>
                     </div>
 
-                    {/* Betaalbewijs */}
+                    {/* Payment Proof */}
                     {bill.fiat_payment_proof_url && (
                       <div className="p-3 bg-blue-950 rounded-lg">
-                        <p className="text-sm text-blue-300 mb-2">Bewijs van fiat betaling:</p>
+                        <p className="text-sm text-blue-300 mb-2">Proof of fiat payment:</p>
                         <a
                           href={bill.fiat_payment_proof_url}
                           target="_blank"
@@ -215,7 +215,7 @@ export default function MyBills() {
                           className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
                         >
                           <ExternalLink className="w-4 h-4" />
-                          Bekijk betaalbewijs
+                          View payment proof
                         </a>
                       </div>
                     )}
@@ -226,7 +226,7 @@ export default function MyBills() {
                         <div className="p-3 bg-purple-950 rounded-lg border border-purple-700">
                           <div className="flex items-center gap-2 text-sm text-purple-300 mb-2">
                             <Shield className="w-4 h-4" />
-                            Escrow Contract Actief
+                            Escrow Contract Active
                           </div>
                           <div className="text-xs text-purple-400 space-y-1">
                             <div>Escrow ID: #{bill.escrow_bill_id}</div>
@@ -238,7 +238,7 @@ export default function MyBills() {
                                 className="flex items-center gap-1 text-purple-400 hover:text-purple-300"
                               >
                                 <LinkIcon className="w-3 h-3" />
-                                Bekijk escrow transactie
+                                View escrow transaction
                               </a>
                             )}
                           </div>
@@ -249,25 +249,25 @@ export default function MyBills() {
                           disabled={isReleasingEscrow[bill.id] || !isConnected || !isCorrectNetwork()}
                         >
                           {isReleasingEscrow[bill.id] ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Escrow vrijgeven...</>
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Releasing escrow...</>
                           ) : !isConnected ? (
-                            'Verbind Wallet om Escrow Vrij te Geven'
+                            'Connect Wallet to Release Escrow'
                           ) : (
                             <>
                               <Shield className="w-4 h-4 mr-2" />
-                              Fiat Ontvangen - Geef Escrow Vrij
+                              Fiat Received - Release Escrow
                             </>
                           )}
                         </Button>
                         <p className="text-xs text-gray-500 text-center">
-                          Dit geeft ${bill.payout_amount?.toFixed(2)} {bill.crypto_currency} vrij naar de payer
+                          This releases ${bill.payout_amount?.toFixed(2)} {bill.crypto_currency} to the payer
                         </p>
                       </div>
                     ) : (
                       /* Legacy: Manual TX Hash input (for bills without escrow) */
                       <div className="space-y-2">
                         <label className="text-sm text-gray-300">
-                          Stuur ${bill.payout_amount?.toFixed(2)} {bill.crypto_currency} naar bovenstaand adres, plak TX hash:
+                          Send ${bill.payout_amount?.toFixed(2)} {bill.crypto_currency} to the above address, paste TX hash:
                         </label>
                         <div className="flex gap-2">
                           <Input
@@ -289,7 +289,7 @@ export default function MyBills() {
                             ) : (
                               <>
                                 <Send className="w-4 h-4 mr-2" />
-                                Bevestig
+                                Confirm
                               </>
                             )}
                           </Button>
@@ -306,11 +306,11 @@ export default function MyBills() {
         {/* ============ ALLE BILLS ============ */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
           <TabsList className="bg-gray-800 border border-gray-700">
-            <TabsTrigger value="all">Alle</TabsTrigger>
-            <TabsTrigger value="approved">Beschikbaar</TabsTrigger>
-            <TabsTrigger value="claimed">Geclaimd</TabsTrigger>
-            <TabsTrigger value="fiat_paid">Fiat Betaald</TabsTrigger>
-            <TabsTrigger value="completed">Afgerond</TabsTrigger>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="approved">Available</TabsTrigger>
+            <TabsTrigger value="claimed">Claimed</TabsTrigger>
+            <TabsTrigger value="fiat_paid">Fiat Paid</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -340,7 +340,7 @@ export default function MyBills() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Bedrag:</span>
+                    <span className="text-gray-400">Amount:</span>
                     <span className="text-white font-mono">${bill.amount?.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -362,7 +362,7 @@ export default function MyBills() {
                           className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
                         >
                           <ExternalLink className="w-3 h-3" />
-                          Bekijk transactie
+                          View transaction
                         </a>
                       )}
                     </div>
@@ -375,7 +375,7 @@ export default function MyBills() {
                   {bill.crypto_tx_to_payer && (
                     <div className="text-xs text-emerald-400 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
-                      Crypto verstuurd
+                      Crypto sent
                       <a
                         href={getExplorerUrl('tx', bill.crypto_tx_to_payer)}
                         target="_blank"
@@ -394,17 +394,17 @@ export default function MyBills() {
           <div className="text-center py-12 bg-gray-800 rounded-lg border-2 border-dashed border-gray-700">
             <Receipt className="w-16 h-16 text-gray-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-200 mb-2">
-              Geen {activeTab !== 'all' ? activeTab : ''} bills gevonden
+              No {activeTab !== 'all' ? activeTab : ''} bills found
             </h3>
             <p className="text-gray-400 mb-4">
               {activeTab === 'all'
-                ? 'Begin met je eerste bill'
-                : `Je hebt nog geen ${activeTab} bills`}
+                ? 'Start with your first bill'
+                : `You don't have any ${activeTab} bills yet`}
             </p>
             <Link to={createPageUrl('SubmitBill')}>
-              <Button className="bg-purple-600 hover:bg-purple-700">
+              <Button className="bg-indigo-600 hover:bg-indigo-700">
                 <PlusCircle className="w-4 h-4 mr-2" />
-                Nieuwe Bill
+                New Bill
               </Button>
             </Link>
           </div>

@@ -1,11 +1,12 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  Receipt, 
-  Calendar, 
-  Wallet, 
+import {
+  Receipt,
+  Calendar,
+  Wallet,
   ExternalLink,
   Clock,
   CheckCircle2,
@@ -15,23 +16,28 @@ import {
 import { formatBillDate } from '../../utils/dateUtils';
 
 const statusConfig = {
-  pending: { 
-    color: 'bg-amber-100 text-amber-800 border-amber-200', 
+  pending: {
+    color: 'bg-amber-100 text-amber-800 border-amber-200',
     icon: Clock,
     iconColor: 'text-amber-600'
   },
-  approved: { 
-    color: 'bg-blue-100 text-blue-800 border-blue-200', 
-    icon: CheckCircle2,
-    iconColor: 'text-blue-600'
+  pending_approval: {
+    color: 'bg-amber-100 text-amber-800 border-amber-200',
+    icon: Clock,
+    iconColor: 'text-amber-600'
   },
-  paid: { 
-    color: 'bg-emerald-100 text-emerald-800 border-emerald-200', 
+  approved: {
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    icon: CheckCircle2,
+    iconColor: 'text-indigo-600'
+  },
+  paid: {
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     icon: Coins,
     iconColor: 'text-emerald-600'
   },
-  rejected: { 
-    color: 'bg-red-100 text-red-800 border-red-200', 
+  rejected: {
+    color: 'bg-red-100 text-red-800 border-red-200',
     icon: XCircle,
     iconColor: 'text-red-600'
   }
@@ -47,12 +53,45 @@ const categoryColors = {
   other: 'bg-gray-100 text-gray-700'
 };
 
-export default function BillCard({ bill, onViewDetails, showActions = false, onApprove, onReject, onMarkPaid }) {
+// Animation variants
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
+  },
+  hover: {
+    y: -8,
+    boxShadow: '0 20px 25px -5px rgba(99, 102, 241, 0.2), 0 10px 10px -5px rgba(99, 102, 241, 0.1)',
+    transition: { duration: 0.2, ease: 'easeOut' }
+  }
+};
+
+const amountVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { delay: 0.1, duration: 0.3, type: 'spring', stiffness: 300, damping: 25 }
+  }
+};
+
+const MotionCard = motion(Card);
+
+export default function BillCard({ bill, onViewDetails, showActions = false, onApprove, onReject, onMarkPaid, index = 0 }) {
   const status = statusConfig[bill.status] || statusConfig.pending;
   const StatusIcon = status.icon;
 
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 border border-gray-700 bg-gray-800">
+    <MotionCard
+      className="group border border-gray-700 bg-gray-800 overflow-hidden"
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      whileHover="hover"
+      transition={{ delay: index * 0.05 }}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -70,11 +109,16 @@ export default function BillCard({ bill, onViewDetails, showActions = false, onA
               </Badge>
             </div>
           </div>
-          <div className="text-right">
+          <motion.div
+            className="text-right"
+            variants={amountVariants}
+            initial="hidden"
+            animate="visible"
+          >
             <div className="text-2xl font-bold text-emerald-400">
               ${bill.amount?.toFixed(2)}
             </div>
-          </div>
+          </motion.div>
         </div>
       </CardHeader>
       
@@ -152,9 +196,9 @@ export default function BillCard({ bill, onViewDetails, showActions = false, onA
         )}
 
         {showActions && bill.status === 'approved' && (
-          <Button 
+          <Button
             onClick={() => onMarkPaid?.(bill)}
-            className="w-full bg-purple-600 hover:bg-purple-700"
+            className="w-full bg-indigo-600 hover:bg-indigo-700"
             size="sm"
           >
             <Coins className="w-4 h-4 mr-1" />
@@ -173,6 +217,6 @@ export default function BillCard({ bill, onViewDetails, showActions = false, onA
           </Button>
         )}
       </CardContent>
-    </Card>
+    </MotionCard>
   );
 }

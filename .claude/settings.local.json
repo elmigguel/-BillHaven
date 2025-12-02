@@ -38,7 +38,15 @@
       "Bash(wsl.exe --list:*)",
       "Bash(powershell.exe \"\nWrite-Host ''''\nWrite-Host ''=== D: DRIVE STATUS ==='' -ForegroundColor Cyan\n$disk = Get-WmiObject Win32_LogicalDisk -Filter \"\"DeviceID=''D:''\"\"\nif ($disk) {\n    $total = [math]::Round($disk.Size / 1GB, 2)\n    $free = [math]::Round($disk.FreeSpace / 1GB, 2)\n    $used = [math]::Round(($disk.Size - $disk.FreeSpace) / 1GB, 2)\n    Write-Host \"\"Total: $total GB | Used: $used GB | Free: $free GB\"\"\n} else {\n    Write-Host ''D: niet gevonden''\n}\n\")",
       "Bash(powershell.exe \"\nWrite-Host ''=== DESKTOP GROTE BESTANDEN ==='' -ForegroundColor Cyan\nGet-ChildItem ''C:\\Users\\miked\\Desktop'' -Recurse -Force -ErrorAction SilentlyContinue | \n    Where-Object { $_.Length -gt 100MB } | \n    Select-Object @{N=''Size_MB'';E={[math]::Round($_.Length/1MB,0)}}, Name | \n    Sort-Object Size_MB -Descending | Format-Table -AutoSize\n\")",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Bash(xargs:*)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(npx hardhat test)",
+      "Bash(npx hardhat:*)",
+      "WebFetch(domain:polygonscan.com)",
+      "Bash(vercel --prod --yes)",
+      "WebFetch(domain:billhaven-8c40tay2x-mikes-projects-f9ae2848.vercel.app)",
+      "Bash(vercel ls:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,13 @@ import { useWallet } from '../../contexts/WalletContext';
 import { escrowService } from '../../services/escrowService';
 import { TokenSelector } from '../wallet/TokenSelector';
 import { getNetwork } from '../../config/contracts';
+import {
+  sanitizeText,
+  sanitizeFileName,
+  sanitizeWalletAddress,
+  validateBillSubmission,
+  debounce
+} from '../../utils/sanitize';
 
 const CATEGORIES = [
   { value: 'rent', label: 'Rent' },
@@ -52,6 +59,11 @@ export default function BillSubmissionForm({ onSuccess }) {
   const [escrowTxHash, setEscrowTxHash] = useState(null);
   const [approvalTxHash, setApprovalTxHash] = useState(null);
   const [error, setError] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Rate limiting: Prevent multiple rapid submissions
+  const lastSubmitTime = useRef(0);
+  const SUBMIT_COOLDOWN = 3000; // 3 seconds between submissions
 
   // V2: Token selection state - FIX: Safe access to network config
   const networkConfig = chainId ? getNetwork(chainId) : null;
@@ -72,14 +84,100 @@ export default function BillSubmissionForm({ onSuccess }) {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
+      // Security: Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Invalid file type. Only JPG, PNG, and PDF files are allowed.');
+        return;
+      }
+
+      // Security: Validate file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        setError('File too large. Maximum size is 10MB.');
+        return;
+      }
+
+      // Security: Sanitize filename
+      const sanitizedName = sanitizeFileName(file.name);
+      const sanitizedFile = new File([file], sanitizedName, { type: file.type });
+
+      setImageFile(sanitizedFile);
+      setError(null);
     }
   };
+
+  // Security: Debounced validation on input change
+  const validateField = useCallback(
+    debounce((field, value) => {
+      const errors = { ...validationErrors };
+
+      switch (field) {
+        case 'title':
+          if (value.length > 0 && value.length < 3) {
+            errors.title = 'Title must be at least 3 characters';
+          } else if (value.length > 200) {
+            errors.title = 'Title must be less than 200 characters';
+          } else {
+            delete errors.title;
+          }
+          break;
+
+        case 'amount':
+          const num = parseFloat(value);
+          if (value && (isNaN(num) || num < 1 || num > 1000000)) {
+            errors.amount = 'Amount must be between $1 and $1,000,000';
+          } else {
+            delete errors.amount;
+          }
+          break;
+
+        case 'maker_ton_address':
+          if (value && value.trim()) {
+            const validation = sanitizeWalletAddress(value, 'ton');
+            if (!validation.isValid) {
+              errors.maker_ton_address = 'Invalid TON wallet address';
+            } else {
+              delete errors.maker_ton_address;
+            }
+          } else {
+            delete errors.maker_ton_address;
+          }
+          break;
+
+        default:
+          break;
+      }
+
+      setValidationErrors(errors);
+    }, 500),
+    [validationErrors]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setEscrowTxHash(null);
+    setValidationErrors({});
+
+    // Security: Rate limiting - prevent spam submissions
+    const now = Date.now();
+    if (now - lastSubmitTime.current < SUBMIT_COOLDOWN) {
+      const remaining = Math.ceil((SUBMIT_COOLDOWN - (now - lastSubmitTime.current)) / 1000);
+      setError(`Please wait ${remaining} seconds before submitting again`);
+      return;
+    }
+
+    // Security: Comprehensive input validation
+    const validation = validateBillSubmission(formData);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      setError('Please fix the validation errors below');
+      return;
+    }
+
+    // Use sanitized data from validation
+    const sanitizedData = validation.sanitized;
 
     // Check wallet connection
     if (!isConnected) {
@@ -98,6 +196,7 @@ export default function BillSubmissionForm({ onSuccess }) {
     }
 
     setIsSubmitting(true);
+    lastSubmitTime.current = now;
 
     try {
       let proofImageUrl = '';
@@ -116,13 +215,13 @@ export default function BillSubmissionForm({ onSuccess }) {
 
       setUploadProgress('Creating bill in database...');
 
-      // Step 3: Create bill in database (status: pending_approval)
+      // Step 3: Create bill in database (status: pending_approval) - USING SANITIZED DATA
       const bill = await billsApi.create({
-        title: formData.title,
-        amount: parseFloat(formData.amount),
-        category: formData.category,
-        description: formData.description,
-        payment_instructions: formData.payment_instructions,
+        title: sanitizedData.title,
+        amount: sanitizedData.amount,
+        category: sanitizedData.category,
+        description: sanitizedData.description || '',
+        payment_instructions: sanitizedData.payment_instructions,
         payout_wallet: walletAddress, // Use connected wallet
         crypto_currency: selectedToken.symbol, // V2: Use selected token symbol
         payment_token: selectedToken.address || 'NATIVE', // V2: Store token address
@@ -131,7 +230,7 @@ export default function BillSubmissionForm({ onSuccess }) {
         fee_amount: platformFee,
         payout_amount: parseFloat(fee.payoutAmount),
         proof_image_url: proofImageUrl,
-        maker_ton_address: formData.maker_ton_address || null // TON address for direct payments
+        maker_ton_address: sanitizedData.maker_ton_address || null // TON address for direct payments
       });
 
       // Step 4: Lock crypto in escrow contract (V2: supports both native and ERC20)
@@ -291,10 +390,16 @@ export default function BillSubmissionForm({ onSuccess }) {
               id="title"
               placeholder="e.g., Monthly Rent Payment"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, title: e.target.value });
+                validateField('title', e.target.value);
+              }}
               required
-              className="bg-gray-900 border-gray-600 text-gray-100"
+              className={`bg-gray-900 border-gray-600 text-gray-100 ${validationErrors.title ? 'border-red-500' : ''}`}
             />
+            {validationErrors.title && (
+              <p className="text-xs text-red-400">{validationErrors.title}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -305,12 +410,19 @@ export default function BillSubmissionForm({ onSuccess }) {
                 type="number"
                 step="0.01"
                 min="1"
+                max="1000000"
                 placeholder="0.00"
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, amount: e.target.value });
+                  validateField('amount', e.target.value);
+                }}
                 required
-                className="bg-gray-900 border-gray-600 text-gray-100"
+                className={`bg-gray-900 border-gray-600 text-gray-100 ${validationErrors.amount ? 'border-red-500' : ''}`}
               />
+              {validationErrors.amount && (
+                <p className="text-xs text-red-400">{validationErrors.amount}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -394,9 +506,15 @@ export default function BillSubmissionForm({ onSuccess }) {
                 id="maker_ton_address"
                 placeholder="EQ... or UQ... (your TON address)"
                 value={formData.maker_ton_address}
-                onChange={(e) => setFormData({ ...formData, maker_ton_address: e.target.value })}
-                className="bg-gray-900 border-gray-600 text-gray-100 font-mono"
+                onChange={(e) => {
+                  setFormData({ ...formData, maker_ton_address: e.target.value });
+                  validateField('maker_ton_address', e.target.value);
+                }}
+                className={`bg-gray-900 border-gray-600 text-gray-100 font-mono ${validationErrors.maker_ton_address ? 'border-red-500' : ''}`}
               />
+              {validationErrors.maker_ton_address && (
+                <p className="text-xs text-red-400">{validationErrors.maker_ton_address}</p>
+              )}
               <p className="text-xs text-sky-400">
                 Add your TON address to accept ultra-low fee payments (~$0.025/tx). Payers can then choose between EVM or TON.
               </p>

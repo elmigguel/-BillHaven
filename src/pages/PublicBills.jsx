@@ -66,11 +66,11 @@ export default function PublicBills() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['publicBills'] });
-      toast.success('Claim geannuleerd');
+      toast.success('Claim cancelled');
     },
     onError: (error) => {
       console.error('Cancel claim error:', error);
-      toast.error('Kon claim niet annuleren: ' + error.message);
+      toast.error('Could not cancel claim: ' + error.message);
     }
   });
 
@@ -81,11 +81,11 @@ export default function PublicBills() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['publicBills'] });
-      toast.success('Bill succesvol geclaimd!');
+      toast.success('Bill successfully claimed!');
     },
     onError: (error) => {
       console.error('Claim bill error:', error);
-      toast.error('Kon bill niet claimen: ' + error.message);
+      toast.error('Could not claim bill: ' + error.message);
     }
   });
 
@@ -98,11 +98,11 @@ export default function PublicBills() {
       queryClient.invalidateQueries({ queryKey: ['publicBills'] });
       setSelectedBill(null);
       setShowPaymentFlow(false);
-      toast.success('Betaalbewijs succesvol ingediend!');
+      toast.success('Payment proof submitted successfully!');
     },
     onError: (error) => {
       console.error('Submit proof error:', error);
-      toast.error('Kon bewijs niet uploaden: ' + error.message);
+      toast.error('Could not upload proof: ' + error.message);
     }
   });
 
@@ -154,12 +154,12 @@ export default function PublicBills() {
           <Link to={createPageUrl('Dashboard')}>
             <Button variant="ghost" className="mb-2 text-gray-300 hover:bg-gray-800">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Terug
+              Back
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-100">Beschikbare Bills</h1>
+          <h1 className="text-3xl font-bold text-gray-100">Available Bills</h1>
           <p className="text-gray-400 mt-1">
-            Kies een bill om te betalen en ontvang crypto terug
+            Choose a bill to pay and receive crypto back
           </p>
         </div>
 
@@ -185,12 +185,12 @@ export default function PublicBills() {
                         {bill.status === 'claimed' ? (
                           <Badge className="bg-amber-100 text-amber-800 border-amber-200">
                             <Clock className="w-3 h-3 mr-1" />
-                            Geclaimd
+                            Claimed
                           </Badge>
                         ) : (
                           <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
                             <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Beschikbaar
+                            Available
                           </Badge>
                         )}
                       </div>
@@ -207,7 +207,7 @@ export default function PublicBills() {
                   {bill.payout_amount && (
                     <div className="p-2 bg-emerald-950 border border-emerald-700 rounded-lg">
                       <div className="flex justify-between text-sm font-semibold">
-                        <span className="text-emerald-300">Je ontvangt:</span>
+                        <span className="text-emerald-300">You receive:</span>
                         <span className="text-emerald-400 font-mono">${bill.payout_amount?.toFixed(2)} {bill.crypto_currency}</span>
                       </div>
                     </div>
@@ -236,7 +236,7 @@ export default function PublicBills() {
                       className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
                     >
                       <ExternalLink className="w-3 h-3" />
-                      Bekijk bewijs
+                      View proof
                     </a>
                   )}
 
@@ -265,8 +265,8 @@ export default function PublicBills() {
         ) : (
           <div className="text-center py-12 bg-gray-800 rounded-lg border-2 border-dashed border-gray-700">
             <Receipt className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-200 mb-2">Geen beschikbare bills</h3>
-            <p className="text-gray-400">Er zijn momenteel geen bills om te betalen</p>
+            <h3 className="text-lg font-semibold text-gray-200 mb-2">No available bills</h3>
+            <p className="text-gray-400">There are currently no bills to pay</p>
           </div>
         )}
 

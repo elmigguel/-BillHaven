@@ -35,7 +35,7 @@ export default function ReviewBills() {
   const updateBillMutation = useMutation({
     mutationFn: ({ id, updates }) => billsApi.update(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries(['allBills']);
+      queryClient.invalidateQueries({ queryKey: ['allBills'] });
       setSelectedBill(null);
       setActionType(null);
       setNotes('');
@@ -201,7 +201,7 @@ export default function ReviewBills() {
               className={
                 actionType === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' :
                 actionType === 'reject' ? 'bg-red-600 hover:bg-red-700' :
-                'bg-purple-600 hover:bg-purple-700'
+                'bg-indigo-600 hover:bg-indigo-700'
               }
             >
               Confirm

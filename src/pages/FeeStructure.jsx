@@ -37,7 +37,7 @@ export default function FeeStructure() {
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           <div className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-lg p-6 border border-purple-700">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-3 bg-purple-600 rounded-lg">
+              <div className="p-3 bg-indigo-600 rounded-lg">
                 <TrendingDown className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white">Volume Discounts</h3>

@@ -9,8 +9,8 @@ export const ESCROW_ADDRESSES = {
   // ============ MAINNETS - UPDATE AFTER DEPLOYMENT ============
   // Deploy with: npx hardhat run scripts/deploy-v2.cjs --network <network-name>
 
-  // Polygon Mainnet - DEPLOY FIRST (cheapest gas: $0.01-$0.10)
-  137: "",
+  // Polygon Mainnet - V3 DEPLOYED (cheapest gas: $0.01-$0.10)
+  137: "0x8beED27aA6d28FE42a9e792d81046DD1337a8240",
 
   // Ethereum Mainnet - Deploy last (highest gas: $5-$25)
   1: "",

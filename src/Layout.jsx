@@ -33,7 +33,7 @@ export default function Layout({ children }) {
                 <Link to={createPageUrl('PublicBills')}>
                   <Button variant="ghost" className="text-gray-300 hover:bg-gray-700">
                     <Globe className="w-4 h-4 mr-2" />
-                    Publieke Bills
+                    Public Bills
                   </Button>
                 </Link>
 
@@ -54,7 +54,7 @@ export default function Layout({ children }) {
                         <DropdownMenuItem className="text-gray-300 focus:bg-gray-700" asChild>
                           <Link to={createPageUrl('Settings')}>
                             <Settings className="w-4 h-4 mr-2" />
-                            Instellingen
+                            Settings
                           </Link>
                         </DropdownMenuItem>
                       )}
@@ -63,14 +63,14 @@ export default function Layout({ children }) {
                         onClick={() => signOut()}
                       >
                         <LogOut className="w-4 h-4 mr-2" />
-                        Uitloggen
+                        Sign Out
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
                   <Link to="/login">
-                    <Button className="bg-purple-600 hover:bg-purple-700">
-                      Inloggen
+                    <Button className="bg-indigo-600 hover:bg-indigo-700">
+                      Sign In
                     </Button>
                   </Link>
                 )}
