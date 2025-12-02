@@ -35,7 +35,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-emerald-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-indigo-500 to-emerald-400">
               Bill Haven
             </span>
           </motion.h1>
@@ -57,7 +57,7 @@ export default function Home() {
             <Link to={createPageUrl('PublicBills')}>
               <MotionButton
                 size="lg"
-                className="bg-purple-600 hover:bg-purple-700 text-lg px-8 py-6"
+                className="bg-indigo-600 hover:bg-indigo-700 text-lg px-8 py-6 shadow-lg hover:shadow-indigo-500/50 transition-shadow duration-300"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.15 }}
@@ -71,13 +71,13 @@ export default function Home() {
               <MotionButton
                 size="lg"
                 variant="outline"
-                className="border-purple-600 text-purple-400 hover:bg-purple-950 text-lg px-8 py-6"
+                className="border-indigo-500 text-indigo-400 hover:bg-indigo-950 hover:border-indigo-400 text-lg px-8 py-6 shadow-lg transition-all duration-300"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.15 }}
               >
                 <Receipt className="w-5 h-5 mr-2" />
-                Submit een Bill
+                Submit a Bill
               </MotionButton>
             </Link>
           </motion.div>
@@ -99,7 +99,7 @@ export default function Home() {
           {[
             {
               icon: Receipt,
-              bg: 'bg-purple-600',
+              bg: 'bg-indigo-600',
               title: '1. Submit a Bill',
               description: 'Upload your bill and specify how much crypto you want to receive',
               delay: 0
@@ -126,7 +126,7 @@ export default function Home() {
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.5, delay: item.delay, ease: [0.16, 1, 0.3, 1] }}
             >
-              <Card className="bg-gray-800 border-gray-700 h-full hover:border-purple-600/50 transition-colors">
+              <Card className="bg-gray-800 border-gray-700 h-full hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300">
                 <CardContent className="p-6 text-center">
                   <motion.div
                     className={`w-16 h-16 ${item.bg} rounded-full flex items-center justify-center mx-auto mb-4`}
@@ -166,9 +166,9 @@ export default function Home() {
           </motion.h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Shield, color: 'text-purple-400', title: 'Safe & Reliable', desc: 'All transactions are verified', delay: 0 },
+              { icon: Shield, color: 'text-indigo-400', title: 'Safe & Reliable', desc: 'All transactions are verified', delay: 0 },
               { icon: Zap, color: 'text-emerald-400', title: 'Fast Payments', desc: 'Receive crypto instantly', delay: 0.1 },
-              { icon: DollarSign, color: 'text-pink-400', title: 'Low Fees', desc: 'Competitive platform costs', delay: 0.2 },
+              { icon: DollarSign, color: 'text-indigo-400', title: 'Low Fees', desc: 'Competitive platform costs', delay: 0.2 },
               { icon: Globe, color: 'text-cyan-400', title: 'Worldwide', desc: 'Pay bills anywhere in the world', delay: 0.3 }
             ].map((feature, index) => (
               <motion.div
@@ -236,7 +236,7 @@ export default function Home() {
           <Link to={createPageUrl('PublicBills')}>
             <MotionButton
               size="lg"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg px-12 py-6"
+              className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-lg px-12 py-6 shadow-xl hover:shadow-indigo-500/50 transition-shadow duration-300"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.15 }}

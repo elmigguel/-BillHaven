@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { billsApi } from '../api/billsApi';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -140,7 +141,13 @@ export default function MyBills() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <motion.div
+      className="min-h-screen bg-gray-900"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -198,10 +205,10 @@ export default function MyBills() {
                     {/* Payer info */}
                     <div className="p-3 bg-gray-900 rounded-lg space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <Wallet className="w-4 h-4 text-purple-400" />
+                        <Wallet className="w-4 h-4 text-indigo-400" />
                         <span className="text-gray-400">Payer wallet:</span>
                       </div>
-                      <code className="text-xs text-purple-300 break-all">{bill.payer_wallet_address}</code>
+                      <code className="text-xs text-indigo-300 break-all">{bill.payer_wallet_address}</code>
                     </div>
 
                     {/* Payment Proof */}
@@ -223,19 +230,19 @@ export default function MyBills() {
                     {/* Escrow Release Button (if bill has escrow) */}
                     {bill.escrow_bill_id ? (
                       <div className="space-y-3">
-                        <div className="p-3 bg-purple-950 rounded-lg border border-purple-700">
-                          <div className="flex items-center gap-2 text-sm text-purple-300 mb-2">
+                        <div className="p-3 bg-indigo-950 rounded-lg border border-indigo-700">
+                          <div className="flex items-center gap-2 text-sm text-indigo-300 mb-2">
                             <Shield className="w-4 h-4" />
                             Escrow Contract Active
                           </div>
-                          <div className="text-xs text-purple-400 space-y-1">
+                          <div className="text-xs text-indigo-400 space-y-1">
                             <div>Escrow ID: #{bill.escrow_bill_id}</div>
                             {bill.escrow_tx_hash && (
                               <a
                                 href={getExplorerUrl('tx', bill.escrow_tx_hash)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-purple-400 hover:text-purple-300"
+                                className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300"
                               >
                                 <LinkIcon className="w-3 h-3" />
                                 View escrow transaction
@@ -316,7 +323,7 @@ export default function MyBills() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           </div>
         ) : filteredBills.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -327,7 +334,7 @@ export default function MyBills() {
                     <CardTitle className="text-lg text-gray-100">{bill.title}</CardTitle>
                     <div className="flex items-center gap-2">
                       {bill.escrow_bill_id && (
-                        <Badge className="bg-purple-600 text-white">
+                        <Badge className="bg-indigo-600 text-white">
                           <Shield className="w-3 h-3 mr-1" />
                           Escrow
                         </Badge>
@@ -349,17 +356,17 @@ export default function MyBills() {
                   </div>
                   {/* Escrow Info */}
                   {bill.escrow_bill_id && (
-                    <div className="p-2 bg-purple-950/50 rounded border border-purple-800/50 space-y-1">
+                    <div className="p-2 bg-indigo-950/50 rounded border border-indigo-800/50 space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-purple-400">Escrow ID:</span>
-                        <span className="text-purple-300 font-mono">#{bill.escrow_bill_id}</span>
+                        <span className="text-indigo-400">Escrow ID:</span>
+                        <span className="text-indigo-300 font-mono">#{bill.escrow_bill_id}</span>
                       </div>
                       {bill.escrow_tx_hash && (
                         <a
                           href={getExplorerUrl('tx', bill.escrow_tx_hash)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                         >
                           <ExternalLink className="w-3 h-3" />
                           View transaction
@@ -410,6 +417,6 @@ export default function MyBills() {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

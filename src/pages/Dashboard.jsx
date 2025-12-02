@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { billsApi } from '../api/billsApi';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -41,11 +42,17 @@ export default function Dashboard() {
   const recentBills = myBills.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <motion.div
+      className="min-h-screen bg-gray-900"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-emerald-400 mb-2">
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400 mb-2">
             Bill Haven
           </h1>
           <p className="text-gray-400">
@@ -56,25 +63,25 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Link to={createPageUrl('SubmitBill')} className="block">
-            <Button className="w-full h-16 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-lg shadow-lg">
+            <Button className="w-full h-16 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-lg shadow-lg hover:shadow-indigo-500/50 transition-all duration-300">
               <PlusCircle className="w-5 h-5 mr-2" />
               Submit New Bill
             </Button>
           </Link>
           <Link to={createPageUrl('MyBills')} className="block">
-            <Button className="w-full h-16 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-lg shadow-lg">
+            <Button className="w-full h-16 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-lg shadow-lg hover:shadow-cyan-500/50 transition-all duration-300">
               <Receipt className="w-5 h-5 mr-2" />
               My Bills
             </Button>
           </Link>
           <Link to={createPageUrl('FeeStructure')} className="block">
-            <Button className="w-full h-16 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-lg shadow-lg">
+            <Button className="w-full h-16 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-lg shadow-lg hover:shadow-emerald-500/50 transition-all duration-300">
               <DollarSign className="w-5 h-5 mr-2" />
               Fee Structure
             </Button>
           </Link>
           <Link to={createPageUrl('ReviewBills')} className="block">
-            <Button className="w-full h-16 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-lg shadow-lg">
+            <Button className="w-full h-16 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-lg shadow-lg hover:shadow-indigo-500/50 transition-all duration-300">
               <CheckCircle2 className="w-5 h-5 mr-2" />
               Review Bills
             </Button>
@@ -87,7 +94,7 @@ export default function Dashboard() {
             title="Total Submitted"
             value={`$${totalSubmitted.toFixed(2)}`}
             icon={DollarSign}
-            color="bg-purple-500"
+            color="bg-indigo-500"
             subtitle={`${myBills.length} bills`}
             index={0}
           />
@@ -174,6 +181,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

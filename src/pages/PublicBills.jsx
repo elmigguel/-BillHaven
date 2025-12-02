@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { billsApi } from '../api/billsApi';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -148,7 +149,13 @@ export default function PublicBills() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <motion.div
+      className="min-h-screen bg-gray-900"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <Link to={createPageUrl('Dashboard')}>
@@ -165,7 +172,7 @@ export default function PublicBills() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           </div>
         ) : availableBills.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -243,7 +250,7 @@ export default function PublicBills() {
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleStartPayment(bill)}
-                      className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                      className="flex-1 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 shadow-lg hover:shadow-indigo-500/50 transition-all duration-300"
                     >
                       <DollarSign className="w-4 h-4 mr-2" />
                       EVM Pay
@@ -251,7 +258,7 @@ export default function PublicBills() {
                     {bill.maker_ton_address && (
                       <Button
                         onClick={() => handleStartTonPayment(bill)}
-                        className="flex-1 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800"
+                        className="flex-1 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 shadow-lg hover:shadow-sky-500/50 transition-all duration-300"
                       >
                         <Diamond className="w-4 h-4 mr-2" />
                         TON Pay
@@ -295,6 +302,6 @@ export default function PublicBills() {
         onPaymentComplete={handleTonPaymentComplete}
         onSubmitProof={handleSubmitProof}
       />
-    </div>
+    </motion.div>
   );
 }
