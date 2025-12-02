@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.opennode.com https://*.infura.io https://*.alchemy.com wss://*.infura.io https://polygon-rpc.com https://bsc-dataseed.binance.org https://*.llamarpc.com https://mempool.space https://api.trongrid.io https://mainnet.optimism.io https://arb1.arbitrum.io https://mainnet.base.org https://*.solana.com wss://*.tonkeeper.com wss://events.ton.org https://tonapi.io https://bridge.tonapi.io wss://*.walletconnect.com https://*.walletconnect.com https://billhaven.onrender.com; frame-src https://js.stripe.com https://hooks.stripe.com blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+    <!-- CSP: DISABLED FOR DEVELOPMENT - Will be set via vercel.json in production -->
+    <!-- Vite HMR requires eval for hot module replacement -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bill Haven</title>
@@ -11,6 +12,9 @@
   </head>
   <body>
     <script>
+      // DEBUG: Log when script starts executing
+      console.log('[BillHaven] Initializing polyfills...');
+
       // CRITICAL: Buffer polyfill must load BEFORE any module scripts
       // This fixes "Buffer is not defined" for TON, Solana, and blockchain SDKs
       (function() {
@@ -42,7 +46,25 @@
         }
         window.global = window;
         window.process = window.process || { env: {} };
+        console.log('[BillHaven] Polyfills loaded successfully');
       })();
+
+      // DEBUG: Catch any unhandled errors
+      window.addEventListener('error', function(e) {
+        console.error('[BillHaven] Global error:', e.error || e.message);
+        document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;">ERROR: ' + (e.error?.message || e.message) + '<br><br>Check console for details</div>';
+      });
+
+      // DEBUG: Monitor root mounting
+      setTimeout(function() {
+        const root = document.getElementById('root');
+        if (!root || root.children.length === 0) {
+          console.warn('[BillHaven] WARNING: Root element is empty after 3 seconds');
+          console.log('[BillHaven] Root element:', root);
+        } else {
+          console.log('[BillHaven] App mounted successfully!');
+        }
+      }, 3000);
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>

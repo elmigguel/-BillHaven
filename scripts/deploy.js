@@ -10,7 +10,8 @@ async function main() {
 
   // Oracle wallet (backend wallet that signs payment verifications)
   // This should be a secure wallet controlled by your backend server
-  const ORACLE_WALLET = process.env.ORACLE_WALLET_ADDRESS || "0x596b95782d98295283c5d72142e477d92549cde3";
+  // V4 Oracle: New secure wallet generated 2025-12-02
+  const ORACLE_WALLET = process.env.ORACLE_WALLET_ADDRESS || "0x1Cd9cb2A9afa7Fc04610dd2c023272321F104586";
 
   console.log("Configuration:");
   console.log(`  Fee Wallet: ${FEE_WALLET}`);

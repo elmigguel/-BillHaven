@@ -12,6 +12,7 @@ export const useAuth = () => {
 }
 
 export function AuthProvider({ children }) {
+  console.log('✅ AuthProvider rendering...')
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -45,9 +46,10 @@ export function AuthProvider({ children }) {
       })
       .catch((error) => {
         if (!isMounted) return
-        console.error('Auth check failed:', error)
-        setAuthError(error.message)
+        console.error('❌ Auth check failed:', error)
+        setAuthError(error?.message || 'Authentication failed')
         setLoading(false) // CRITICAL: Always set loading to false on error
+        // Continue without auth - don't block the app
       })
 
     // Safety timeout - if loading is still true after 15 seconds, force it to false

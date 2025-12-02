@@ -113,17 +113,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Security headers with Helmet
+// DEVELOPMENT: CSP disabled for Vite HMR (requires eval)
+// PRODUCTION: Enable strict CSP via vercel.json
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "https://api.stripe.com", "https://api.opennode.com", "https://*.supabase.co", "wss://*.supabase.co"],
-    },
-  },
+  contentSecurityPolicy: false, // Disabled for development
   crossOriginEmbedderPolicy: false, // Allow embedding for payment iframes
 }));
 

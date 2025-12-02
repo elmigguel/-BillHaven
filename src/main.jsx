@@ -1,5 +1,6 @@
 // CRITICAL: Polyfills must be loaded FIRST before any other imports
 // This fixes "Buffer is not defined" error for blockchain libraries (TON, Solana, etc.)
+console.log('🚀 BillHaven starting...')
 import { Buffer } from 'buffer';
 window.Buffer = Buffer;
 
@@ -7,6 +8,7 @@ window.Buffer = Buffer;
 if (typeof window !== 'undefined') {
   window.process = window.process || { env: {} };
 }
+console.log('✅ Polyfills loaded')
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -40,12 +42,29 @@ Sentry.init({
   },
 });
 
-const queryClient = new QueryClient();
+console.log('✅ All imports loaded')
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+const queryClient = new QueryClient();
+console.log('✅ QueryClient created')
+
+console.log('✅ Starting React render...')
+
+// CRITICAL FIX: Show loading state immediately to prevent empty root
+const rootElement = document.getElementById('root')
+if (!rootElement) {
+  console.error('❌ FATAL: Root element not found!')
+  document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace;">FATAL ERROR: Root element #root not found in DOM</div>'
+  throw new Error('Root element not found')
+}
+
+// Show immediate loading state
+rootElement.innerHTML = '<div style="min-height: 100vh; background: #111827; display: flex; align-items: center; justify-content: center;"><div style="color: white; font-family: system-ui; font-size: 18px;">Loading BillHaven...</div></div>'
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
   </React.StrictMode>,
 )
+console.log('✅ React render initiated')

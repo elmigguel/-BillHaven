@@ -4,12 +4,19 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react()
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // Polyfill Buffer for browser
+      // Polyfill Node.js modules for browser
       buffer: 'buffer/',
+      crypto: 'crypto-browserify',
+      stream: 'stream-browserify',
+      events: 'events',
+      // ESM polyfills for CommonJS packages
+      'classnames': path.resolve(__dirname, './src/polyfills/classnames.js'),
     },
   },
   define: {
@@ -139,14 +146,35 @@ export default defineConfig({
       'react-dom',
       'react-router-dom',
       '@supabase/supabase-js',
-      'viem'
+      'viem',
+      'buffer',
+      // Force pre-bundling of CommonJS packages to ensure ESM conversion
+      'tweetnacl',
+      'tweetnacl-util',
+      'ua-parser-js',
+      'classnames',
     ],
     // Exclude large blockchain libs from optimization (load on-demand)
     exclude: [
       '@ton/ton',
       '@tonconnect/ui-react',
       'tronweb'
-    ]
+    ],
+    // Force ESM conversion for problematic packages
+    esbuildOptions: {
+      // Define global for browser compatibility
+      define: {
+        global: 'globalThis'
+      },
+      // Handle CommonJS modules
+      supported: {
+        bigint: true
+      },
+      // Ensure proper module resolution
+      mainFields: ['module', 'main'],
+      // Force resolution of exports field
+      conditions: ['module', 'import', 'default']
+    }
   },
   // Preview server configuration
   preview: {

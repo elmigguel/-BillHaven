@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Mount Test - BillHaven</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #111;
+      color: #0f0;
+      padding: 20px;
+    }
+    .success { color: #0f0; }
+    .error { color: #f00; }
+    .warning { color: #ff0; }
+    pre { background: #222; padding: 10px; border: 1px solid #333; }
+  </style>
+</head>
+<body>
+  <h1>BillHaven React Mount Diagnostic</h1>
+  <p>This page tests if React can mount without the full app complexity.</p>
+
+  <div id="test-results"></div>
+  <div id="root"></div>
+
+  <script type="module">
+    const log = (message, type = 'info') => {
+      const div = document.getElementById('test-results');
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+      div.innerHTML += `<div class="${className}">[${new Date().toISOString()}] ${message}</div>`;
+      console.log(message);
+    };
+
+    log('STEP 1: Loading Buffer polyfill...', 'info');
+    import { Buffer } from 'buffer';
+    window.Buffer = Buffer;
+    window.process = window.process || { env: {} };
+    log('✓ Polyfills loaded', 'success');
+
+    try {
+      log('STEP 2: Importing React...', 'info');
+      const React = await import('react');
+      const ReactDOM = await import('react-dom/client');
+      log('✓ React imported successfully', 'success');
+
+      log('STEP 3: Creating minimal React component...', 'info');
+      const TestApp = () => {
+        return React.createElement('div', { style: { padding: '20px', background: '#004400', border: '2px solid #00ff00' } },
+          React.createElement('h2', null, '✓ REACT MOUNTED SUCCESSFULLY!'),
+          React.createElement('p', null, 'If you see this, React is working.'),
+          React.createElement('p', null, 'Next: Test each provider individually.')
+        );
+      };
+
+      log('STEP 4: Mounting React to #root...', 'info');
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(TestApp));
+      log('✓ React.createRoot() executed', 'success');
+
+      setTimeout(() => {
+        const rootEl = document.getElementById('root');
+        if (rootEl && rootEl.children.length > 0) {
+          log('✓ SUCCESS: React component rendered to DOM!', 'success');
+        } else {
+          log('✗ ERROR: Root element is empty after mount', 'error');
+        }
+      }, 1000);
+
+    } catch (err) {
+      log(`✗ ERROR: ${err.message}`, 'error');
+      log(`Stack: ${err.stack}`, 'error');
+    }
+  </script>
+</body>
+</html>

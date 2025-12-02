@@ -145,12 +145,25 @@ function SafeWalletProvider({ Provider, name, children }) {
   );
 }
 
+// Loading component shown during provider initialization
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-white text-xl mb-4">Loading BillHaven...</div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  console.log('✅ App component rendering...')
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <React.Suspense fallback={<div className="min-h-screen bg-gray-900 flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
+          <React.Suspense fallback={<LoadingScreen />}>
             <ErrorBoundary>
               <WalletProvider>
                 <ErrorBoundary>
