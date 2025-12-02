@@ -2,16 +2,18 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingDown, DollarSign } from 'lucide-react';
+import { ArrowLeft, TrendingDown, DollarSign, Users } from 'lucide-react';
 import { FeeStructureInfo } from '../components/bills/FeeCalculator';
 
 export default function FeeStructure() {
+  // Updated examples with correct tier structure
   const examples = [
-    { amount: 500, fee: 4.4, feeAmount: 22, payout: 478 },
-    { amount: 5000, fee: 4.4, feeAmount: 220, payout: 4780 },
+    { amount: 500, fee: 4.4, feeAmount: 22, payout: 478, discountedFee: 2.2, discountedPayout: 489 },
+    { amount: 5000, fee: 4.4, feeAmount: 220, payout: 4780, discountedFee: 2.2, discountedPayout: 4890 },
     { amount: 15000, fee: 3.5, feeAmount: 525, payout: 14475 },
-    { amount: 50000, fee: 2.6, feeAmount: 1300, payout: 48700 },
-    { amount: 500000, fee: 1.7, feeAmount: 8500, payout: 491500 },
+    { amount: 35000, fee: 2.8, feeAmount: 980, payout: 34020 },
+    { amount: 100000, fee: 1.7, feeAmount: 1700, payout: 98300 },
+    { amount: 750000, fee: 1.2, feeAmount: 9000, payout: 741000 },
     { amount: 2000000, fee: 0.8, feeAmount: 16000, payout: 1984000 },
   ];
 

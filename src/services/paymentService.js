@@ -141,24 +141,34 @@ export async function executeBillPayment({
 
 /**
  * Calculate platform fee based on bill amount
- * Tiered fee structure
+ * Tiered fee structure with optional affiliate discount
+ *
+ * Standard Tiers:
+ * - Under $10,000:      4.4% (2.2% with affiliate)
+ * - $10,000 - $20,000:  3.5%
+ * - $20,000 - $50,000:  2.8%
+ * - $50,000 - $500,000: 1.7%
+ * - $500,000 - $1M:     1.2%
+ * - Over $1,000,000:    0.8%
  */
-export function calculatePlatformFee(amount) {
-  if (amount < 10000) return amount * 0.044     // 4.4%
+export function calculatePlatformFee(amount, hasAffiliateDiscount = false) {
+  if (amount < 10000) return amount * (hasAffiliateDiscount ? 0.022 : 0.044)  // 4.4% or 2.2%
   if (amount < 20000) return amount * 0.035     // 3.5%
-  if (amount < 100000) return amount * 0.026    // 2.6%
-  if (amount < 1000000) return amount * 0.017   // 1.7%
+  if (amount < 50000) return amount * 0.028     // 2.8%
+  if (amount < 500000) return amount * 0.017    // 1.7%
+  if (amount < 1000000) return amount * 0.012   // 1.2%
   return amount * 0.008                          // 0.8%
 }
 
 /**
  * Get fee percentage for display
  */
-export function getFeePercentage(amount) {
-  if (amount < 10000) return 4.4
+export function getFeePercentage(amount, hasAffiliateDiscount = false) {
+  if (amount < 10000) return hasAffiliateDiscount ? 2.2 : 4.4
   if (amount < 20000) return 3.5
-  if (amount < 100000) return 2.6
-  if (amount < 1000000) return 1.7
+  if (amount < 50000) return 2.8
+  if (amount < 500000) return 1.7
+  if (amount < 1000000) return 1.2
   return 0.8
 }
 

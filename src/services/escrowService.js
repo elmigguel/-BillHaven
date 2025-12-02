@@ -399,29 +399,35 @@ export const escrowService = {
 
   /**
    * Calculate platform fee based on amount
-   * Uses tiered fee structure matching FeeCalculator.jsx
+   * Uses tiered fee structure with optional affiliate discount
    *
    * Tier Structure (USD equivalent):
-   * - Under $10,000:      4.4%
+   * - Under $10,000:      4.4% (2.2% with affiliate)
    * - $10,000 - $20,000:  3.5%
-   * - $20,000 - $100,000: 2.6%
-   * - $100,000 - $1M:     1.7%
+   * - $20,000 - $50,000:  2.8%
+   * - $50,000 - $500,000: 1.7%
+   * - $500,000 - $1M:     1.2%
    * - Over $1,000,000:    0.8%
+   *
+   * Affiliate Discount: 50% off ONLY on <$10K tier
    */
-  calculateFee(amount) {
+  calculateFee(amount, hasAffiliateDiscount = false) {
     const numAmount = parseFloat(amount) || 0;
     let feePercentage;
 
     if (numAmount >= 1000000) {
-      feePercentage = 0.008; // 0.8% - Enterprise tier
-    } else if (numAmount >= 100000) {
+      feePercentage = 0.008; // 0.8% - Whale tier
+    } else if (numAmount >= 500000) {
+      feePercentage = 0.012; // 1.2% - Enterprise tier
+    } else if (numAmount >= 50000) {
       feePercentage = 0.017; // 1.7% - Business tier
     } else if (numAmount >= 20000) {
-      feePercentage = 0.026; // 2.6% - Professional tier
+      feePercentage = 0.028; // 2.8% - Professional tier
     } else if (numAmount >= 10000) {
       feePercentage = 0.035; // 3.5% - Growth tier
     } else {
-      feePercentage = 0.044; // 4.4% - Standard tier
+      // Standard tier with optional affiliate discount
+      feePercentage = hasAffiliateDiscount ? 0.022 : 0.044; // 2.2% or 4.4%
     }
 
     const feeAmount = numAmount * feePercentage;
@@ -431,7 +437,8 @@ export const escrowService = {
       feePercentage: feePercentage * 100,
       feeAmount: feeAmount.toFixed(6),
       payoutAmount: payoutAmount.toFixed(6),
-      totalToLock: numAmount.toFixed(6)
+      totalToLock: numAmount.toFixed(6),
+      isDiscounted: hasAffiliateDiscount && numAmount < 10000
     };
   },
 
