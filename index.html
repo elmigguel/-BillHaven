@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.opennode.com https://*.infura.io https://*.alchemy.com wss://*.infura.io https://polygon-rpc.com https://bsc-dataseed.binance.org https://*.llamarpc.com https://mempool.space https://api.trongrid.io https://mainnet.optimism.io https://arb1.arbitrum.io https://mainnet.base.org https://*.solana.com; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.opennode.com https://*.infura.io https://*.alchemy.com wss://*.infura.io https://polygon-rpc.com https://bsc-dataseed.binance.org https://*.llamarpc.com https://mempool.space https://api.trongrid.io https://mainnet.optimism.io https://arb1.arbitrum.io https://mainnet.base.org https://*.solana.com wss://*.tonkeeper.com wss://events.ton.org https://tonapi.io https://bridge.tonapi.io wss://*.walletconnect.com https://*.walletconnect.com https://billhaven.onrender.com; frame-src https://js.stripe.com https://hooks.stripe.com blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bill Haven</title>
@@ -10,6 +10,40 @@
     <meta name="theme-color" content="#111827" />
   </head>
   <body>
+    <script>
+      // CRITICAL: Buffer polyfill must load BEFORE any module scripts
+      // This fixes "Buffer is not defined" for TON, Solana, and blockchain SDKs
+      (function() {
+        if (typeof window.Buffer === 'undefined') {
+          window.Buffer = {
+            from: function(data, encoding) {
+              if (typeof data === 'string') {
+                if (encoding === 'hex') {
+                  var arr = new Uint8Array(data.length / 2);
+                  for (var i = 0; i < data.length; i += 2) {
+                    arr[i / 2] = parseInt(data.substr(i, 2), 16);
+                  }
+                  return arr;
+                }
+                return new TextEncoder().encode(data);
+              }
+              return new Uint8Array(data);
+            },
+            alloc: function(size) { return new Uint8Array(size); },
+            isBuffer: function(obj) { return obj instanceof Uint8Array; },
+            concat: function(list, totalLength) {
+              if (!totalLength) totalLength = list.reduce(function(acc, arr) { return acc + arr.length; }, 0);
+              var result = new Uint8Array(totalLength);
+              var offset = 0;
+              list.forEach(function(arr) { result.set(arr, offset); offset += arr.length; });
+              return result;
+            }
+          };
+        }
+        window.global = window;
+        window.process = window.process || { env: {} };
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

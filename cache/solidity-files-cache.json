@@ -703,8 +703,8 @@
       ]
     },
     "/home/elmigguel/BillHaven/contracts/BillHavenEscrowV3.sol": {
-      "lastModificationDate": 1764433101336,
-      "contentHash": "4198f066275af46e4becdce18ce1f2cd",
+      "lastModificationDate": 1764681386522,
+      "contentHash": "e345476fa1efdce29c7f020e99efa5ac",
       "sourceName": "contracts/BillHavenEscrowV3.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1054,6 +1054,51 @@
       ],
       "artifacts": [
         "MockERC20"
+      ]
+    },
+    "/home/elmigguel/BillHaven/contracts/BillHavenEscrowV4.sol": {
+      "lastModificationDate": 1764700025832,
+      "contentHash": "36422c5e939c53b02219bd3fd4c6eb73",
+      "sourceName": "contracts/BillHavenEscrowV4.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/token/ERC20/IERC20.sol",
+        "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
+        "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+        "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "BillHavenEscrowV4"
       ]
     }
   }

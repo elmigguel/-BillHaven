@@ -8,7 +8,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Polyfill Buffer for browser
+      buffer: 'buffer/',
     },
+  },
+  define: {
+    // Fix for libraries that check for global
+    global: 'globalThis',
   },
   build: {
     // Code splitting configuration

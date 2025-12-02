@@ -122,18 +122,49 @@ function AnimatedRoutes() {
   );
 }
 
+// Wallet Error Fallback - shows when a wallet provider fails
+function WalletErrorFallback({ walletName, children }) {
+  return (
+    <React.Fragment>
+      {children}
+    </React.Fragment>
+  );
+}
+
+// Safe wrapper for wallet providers - isolates errors
+function SafeWalletProvider({ Provider, name, children }) {
+  return (
+    <ErrorBoundary
+      FallbackComponent={({ error }) => {
+        console.warn(`${name} provider failed:`, error);
+        return <WalletErrorFallback walletName={name}>{children}</WalletErrorFallback>;
+      }}
+    >
+      <Provider>{children}</Provider>
+    </ErrorBoundary>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <WalletProvider>
-            <TonWalletProvider>
-              <SolanaWalletProvider>
-                <AnimatedRoutes />
-              </SolanaWalletProvider>
-            </TonWalletProvider>
-          </WalletProvider>
+          <React.Suspense fallback={<div className="min-h-screen bg-gray-900 flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
+            <ErrorBoundary>
+              <WalletProvider>
+                <ErrorBoundary>
+                  <TonWalletProvider>
+                    <ErrorBoundary>
+                      <SolanaWalletProvider network="mainnet" autoConnect={false}>
+                        <AnimatedRoutes />
+                      </SolanaWalletProvider>
+                    </ErrorBoundary>
+                  </TonWalletProvider>
+                </ErrorBoundary>
+              </WalletProvider>
+            </ErrorBoundary>
+          </React.Suspense>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

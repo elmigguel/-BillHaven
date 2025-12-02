@@ -1,3 +1,13 @@
+// CRITICAL: Polyfills must be loaded FIRST before any other imports
+// This fixes "Buffer is not defined" error for blockchain libraries (TON, Solana, etc.)
+import { Buffer } from 'buffer';
+window.Buffer = Buffer;
+
+// Also polyfill process for some libraries
+if (typeof window !== 'undefined') {
+  window.process = window.process || { env: {} };
+}
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'

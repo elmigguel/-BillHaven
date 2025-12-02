@@ -215,6 +215,119 @@ export const ESCROW_ABI_V2 = [
   "function emergencyWithdrawToken(address _token)"
 ];
 
+// V4 Contract ABI - SECURE VERSION with Oracle verification
+// Use this ABI after deploying V4 contract
+export const ESCROW_ABI_V4 = [
+  // Constructor
+  "constructor(address _feeWallet)",
+
+  // Events (V4)
+  "event BillCreated(uint256 indexed billId, address indexed billMaker, address indexed token, uint256 amount, uint256 fee, uint8 paymentMethod)",
+  "event BillFunded(uint256 indexed billId, uint256 totalAmount)",
+  "event BillClaimed(uint256 indexed billId, address indexed payer)",
+  "event PaymentMarkedSent(uint256 indexed billId, bytes32 paymentReference)",
+  "event PaymentVerified(uint256 indexed billId, address verifiedBy, bool isOracle)",
+  "event HoldPeriodComplete(uint256 indexed billId, uint256 releaseTime)",
+  "event CryptoReleased(uint256 indexed billId, address indexed payer, uint256 amount, uint256 fee)",
+  "event BillDisputed(uint256 indexed billId, address indexed by)",
+  "event DisputeResolved(uint256 indexed billId, bool releasedToPayer, address resolver)",
+  "event BillRefunded(uint256 indexed billId, address indexed billMaker, uint256 amount)",
+  "event BillCancelled(uint256 indexed billId, address indexed billMaker)",
+  "event UserUpgraded(address indexed user, uint8 newLevel)",
+  "event PayerDisputeRaised(uint256 indexed billId, address indexed payer)",
+  "event OracleAdded(address indexed oracle)",
+  "event OracleRemoved(address indexed oracle)",
+
+  // Read functions
+  "function billCounter() view returns (uint256)",
+  "function feeWallet() view returns (address)",
+  "function platformFeePercent() view returns (uint256)",
+  "function supportedTokens(address) view returns (bool)",
+  "function trustedOracles(address) view returns (bool)",
+  "function getMinSecurityDelay() pure returns (uint256)",
+  "function getHoldPeriod(uint8 _method) view returns (uint256)",
+  "function isMethodBlocked(uint8 _method) view returns (bool)",
+  "function getBill(uint256 _billId) view returns (tuple(address billMaker, address payer, address token, uint256 amount, uint256 platformFee, uint256 fiatAmount, uint8 status, uint8 paymentMethod, bool payerConfirmed, bool oracleVerified, bool makerConfirmed, uint256 createdAt, uint256 fundedAt, uint256 paymentSentAt, uint256 verifiedAt, uint256 releaseTime, uint256 expiresAt, bytes32 paymentReference))",
+  "function getUserStats(address _user) view returns (tuple(uint256 totalTrades, uint256 successfulTrades, uint256 disputedTrades, uint256 dailyVolume, uint256 weeklyVolume, uint256 lastTradeDate, uint256 lastWeekStart, uint8 trustLevel, bool isBlacklisted))",
+  "function getUserLimits(address _user) view returns (tuple(uint256 maxDailyVolume, uint256 maxWeeklyVolume, uint256 maxTradeSize, uint256 maxDailyTrades))",
+  "function canRelease(uint256 _billId) view returns (bool, string memory)",
+  "function calculateTieredFee(uint256 _fiatAmount, bool _hasAffiliateDiscount) pure returns (uint256 feeInBasisPoints, uint256 feeAmount)",
+
+  // Write functions - Native tokens
+  "function createBill(uint256 _fiatAmount, uint8 _paymentMethod) payable returns (uint256)",
+
+  // Write functions - ERC20 tokens
+  "function createBillWithToken(address _token, uint256 _amount, uint256 _fiatAmount, uint8 _paymentMethod) returns (uint256)",
+
+  // Bill operations
+  "function claimBill(uint256 _billId)",
+  "function confirmPaymentSent(uint256 _billId, bytes32 _paymentReference)",
+  "function makerConfirmPayment(uint256 _billId)",
+  "function autoReleaseAfterHoldPeriod(uint256 _billId)",
+  "function releaseFunds(uint256 _billId)",
+  "function autoRelease(uint256 _billId)",
+  "function payerDisputeBeforeRelease(uint256 _billId)",
+  "function raiseDispute(uint256 _billId)",
+  "function cancelBill(uint256 _billId)",
+  "function refundExpiredBill(uint256 _billId)",
+
+  // Admin functions (ORACLE_ROLE required for verifyPaymentReceived)
+  "function verifyPaymentReceived(uint256 _billId, bytes32 _paymentReference, uint256 _fiatAmount, uint256 _timestamp, bytes calldata _signature)",
+  "function resolveDispute(uint256 _billId, bool _releaseToPayer)",
+  "function addOracle(address _oracle)",
+  "function removeOracle(address _oracle)",
+  "function addSupportedToken(address _token)",
+  "function removeSupportedToken(address _token)",
+  "function updateHoldPeriod(uint8 _method, uint256 _period)",
+  "function setMethodBlocked(uint8 _method, bool _blocked)",
+  "function updatePlatformFee(uint256 _newFeePercent)",
+  "function updateFeeWallet(address _newWallet)",
+  "function pause()",
+  "function unpause()",
+  "function emergencyWithdraw()",
+  "function emergencyWithdrawToken(address _token)"
+];
+
+// V4 Payment Methods (enum)
+export const V4_PAYMENT_METHODS = {
+  CRYPTO: 0,
+  CASH_DEPOSIT: 1,
+  WIRE_TRANSFER: 2,
+  IDEAL: 3,
+  SEPA: 4,
+  BANK_TRANSFER: 5,
+  PAYPAL_FRIENDS: 6,
+  PAYPAL_GOODS: 7,    // BLOCKED
+  CREDIT_CARD: 8,     // BLOCKED
+  OTHER: 9
+};
+
+// V4 Confirmation Statuses (enum)
+export const V4_STATUS = {
+  CREATED: 0,
+  FUNDED: 1,
+  CLAIMED: 2,
+  PAYMENT_SENT: 3,
+  PAYMENT_VERIFIED: 4,
+  HOLD_COMPLETE: 5,
+  RELEASED: 6,
+  DISPUTED: 7,
+  REFUNDED: 8,
+  CANCELLED: 9
+};
+
+// V4 Hold Periods (in seconds)
+export const V4_HOLD_PERIODS = {
+  CRYPTO: 0,
+  CASH_DEPOSIT: 24 * 60 * 60,     // 24 hours (V4 minimum)
+  WIRE_TRANSFER: 2 * 24 * 60 * 60, // 2 days
+  IDEAL: 24 * 60 * 60,             // 24 hours
+  SEPA: 3 * 24 * 60 * 60,          // 3 days
+  BANK_TRANSFER: 5 * 24 * 60 * 60, // 5 days
+  PAYPAL_FRIENDS: 3 * 24 * 60 * 60,// 3 days
+  OTHER: 7 * 24 * 60 * 60          // 7 days
+};
+
 // V1 Contract ABI (backwards compatibility)
 export const ESCROW_ABI = [
   "constructor(address _feeWallet)",

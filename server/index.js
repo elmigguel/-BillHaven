@@ -10,6 +10,29 @@ import dotenv from 'dotenv';
 import Stripe from 'stripe';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { ethers } from 'ethers';
+
+// ===========================================
+// V4 ORACLE CONFIGURATION
+// ===========================================
+// The Oracle wallet signs payment verifications for the smart contract
+// This must match the Oracle registered in the deployed V4 contract
+
+const V4_CONTRACT_CONFIG = {
+  // Polygon Mainnet
+  chainId: 137,
+  contractAddress: process.env.ESCROW_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000', // UPDATE AFTER DEPLOY
+  rpcUrl: 'https://polygon-rpc.com',
+
+  // Oracle wallet - KEEP THIS SECRET!
+  oraclePrivateKey: process.env.ORACLE_PRIVATE_KEY || null
+};
+
+// V4 Contract ABI (only the functions we need)
+const V4_CONTRACT_ABI = [
+  'function verifyPaymentReceived(uint256 _billId, bytes32 _paymentReference, uint256 _fiatAmount, uint256 _timestamp, bytes calldata _signature) external',
+  'function getBill(uint256 _billId) external view returns (tuple(address billMaker, address payer, address token, uint256 amount, uint256 platformFee, uint256 fiatAmount, uint8 status, uint8 paymentMethod, bool payerConfirmed, bool oracleVerified, bool makerConfirmed, uint256 createdAt, uint256 fundedAt, uint256 paymentSentAt, uint256 verifiedAt, uint256 releaseTime, uint256 expiresAt, bytes32 paymentReference))'
+];
 
 // Simple in-memory rate limiter
 const rateLimitMap = new Map();
@@ -403,6 +426,9 @@ function getPaymentMethodTypes(method) {
 
 async function handlePaymentSuccess(paymentIntent) {
   const billId = paymentIntent.metadata.billId;
+  const onChainBillId = paymentIntent.metadata.onChainBillId; // V4: On-chain bill ID
+  const paymentReference = paymentIntent.metadata.paymentReference; // V4: Payment reference bytes32
+
   console.log(`Payment succeeded for bill ${billId}:`, paymentIntent.id);
 
   try {
@@ -430,6 +456,51 @@ async function handlePaymentSuccess(paymentIntent) {
       provider_id: paymentIntent.id,
       status: 'COMPLETED'
     });
+
+    // ===========================================
+    // V4: AUTOMATIC ON-CHAIN VERIFICATION
+    // ===========================================
+    // This is the CRITICAL security step - verify payment on smart contract
+    // Only the Oracle (backend) can do this, which starts the hold period
+    if (onChainBillId && paymentReference) {
+      console.log(`\n🔒 V4: Initiating on-chain payment verification...`);
+      console.log(`   Supabase Bill ID: ${billId}`);
+      console.log(`   On-Chain Bill ID: ${onChainBillId}`);
+      console.log(`   Payment Reference: ${paymentReference}`);
+
+      const fiatAmount = paymentIntent.amount; // Amount in cents
+      const result = await verifyPaymentOnChainV4(
+        parseInt(onChainBillId),
+        paymentReference,
+        fiatAmount
+      );
+
+      if (result.success) {
+        // Update Supabase with on-chain verification status
+        await supabase
+          .from('bills')
+          .update({
+            onchain_verified: true,
+            onchain_tx_hash: result.txHash,
+            onchain_verified_at: new Date().toISOString()
+          })
+          .eq('id', billId);
+
+        console.log(`✅ V4: On-chain verification complete - hold period started!`);
+      } else {
+        console.error(`❌ V4: On-chain verification failed: ${result.error}`);
+        // Record the failure for manual review
+        await supabase
+          .from('bills')
+          .update({
+            onchain_verification_error: result.error,
+            onchain_verification_failed_at: new Date().toISOString()
+          })
+          .eq('id', billId);
+      }
+    } else {
+      console.log(`ℹ️  V4: No on-chain bill ID or payment reference - skipping smart contract verification`);
+    }
 
   } catch (error) {
     console.error('Error processing payment success:', error);
@@ -570,10 +641,174 @@ async function handleLightningPaymentFailure(chargeId, status, data) {
   }
 }
 
+// ===========================================
+// V4 ORACLE SIGNING FUNCTIONS
+// ===========================================
+
+/**
+ * Creates an Oracle signature for V4 payment verification
+ * This signature is used by the smart contract to verify payment was received
+ *
+ * @param {number} billId - On-chain bill ID
+ * @param {string} payer - Payer wallet address
+ * @param {string} billMaker - Bill maker wallet address
+ * @param {number} fiatAmount - Fiat amount in cents
+ * @param {string} paymentReference - Payment reference (bytes32)
+ * @returns {Object} { signature, timestamp }
+ */
+async function createOracleSignatureV4(billId, payer, billMaker, fiatAmount, paymentReference) {
+  if (!V4_CONTRACT_CONFIG.oraclePrivateKey) {
+    throw new Error('ORACLE_PRIVATE_KEY not configured - cannot sign payment verification');
+  }
+
+  const wallet = new ethers.Wallet(V4_CONTRACT_CONFIG.oraclePrivateKey);
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  // V4 signature format includes chainId and contract address to prevent replay attacks
+  const messageHash = ethers.solidityPackedKeccak256(
+    ['uint256', 'address', 'uint256', 'address', 'address', 'uint256', 'bytes32', 'uint256'],
+    [
+      V4_CONTRACT_CONFIG.chainId,
+      V4_CONTRACT_CONFIG.contractAddress,
+      billId,
+      payer,
+      billMaker,
+      fiatAmount,
+      paymentReference,
+      timestamp
+    ]
+  );
+
+  const signature = await wallet.signMessage(ethers.getBytes(messageHash));
+
+  console.log(`🔏 V4 Oracle signature created for bill ${billId}`);
+  console.log(`   Chain ID: ${V4_CONTRACT_CONFIG.chainId}`);
+  console.log(`   Contract: ${V4_CONTRACT_CONFIG.contractAddress}`);
+  console.log(`   Timestamp: ${timestamp}`);
+
+  return { signature, timestamp };
+}
+
+/**
+ * Calls verifyPaymentReceived on the V4 smart contract
+ *
+ * @param {number} billId - On-chain bill ID
+ * @param {string} paymentReference - Payment reference (bytes32)
+ * @param {number} fiatAmount - Fiat amount in cents
+ * @returns {Object} { success, txHash, error }
+ */
+async function verifyPaymentOnChainV4(billId, paymentReference, fiatAmount) {
+  if (!V4_CONTRACT_CONFIG.oraclePrivateKey) {
+    console.warn('⚠️  V4 Oracle signing not configured - skipping on-chain verification');
+    return { success: false, error: 'Oracle not configured' };
+  }
+
+  if (V4_CONTRACT_CONFIG.contractAddress === '0x0000000000000000000000000000000000000000') {
+    console.warn('⚠️  V4 Contract address not set - skipping on-chain verification');
+    return { success: false, error: 'Contract address not configured' };
+  }
+
+  try {
+    const provider = new ethers.JsonRpcProvider(V4_CONTRACT_CONFIG.rpcUrl);
+    const wallet = new ethers.Wallet(V4_CONTRACT_CONFIG.oraclePrivateKey, provider);
+    const contract = new ethers.Contract(V4_CONTRACT_CONFIG.contractAddress, V4_CONTRACT_ABI, wallet);
+
+    // Get bill details from contract
+    const bill = await contract.getBill(billId);
+
+    if (!bill || bill.billMaker === '0x0000000000000000000000000000000000000000') {
+      console.error(`❌ Bill ${billId} not found on-chain`);
+      return { success: false, error: 'Bill not found on chain' };
+    }
+
+    // Create signature
+    const { signature, timestamp } = await createOracleSignatureV4(
+      billId,
+      bill.payer,
+      bill.billMaker,
+      fiatAmount,
+      paymentReference
+    );
+
+    // Send transaction
+    console.log(`📤 Sending verifyPaymentReceived transaction for bill ${billId}...`);
+
+    const tx = await contract.verifyPaymentReceived(
+      billId,
+      paymentReference,
+      fiatAmount,
+      timestamp,
+      signature
+    );
+
+    console.log(`⏳ Transaction sent: ${tx.hash}`);
+
+    // Wait for confirmation
+    const receipt = await tx.wait();
+
+    console.log(`✅ V4 Payment verified on-chain!`);
+    console.log(`   Bill ID: ${billId}`);
+    console.log(`   Tx Hash: ${receipt.hash}`);
+    console.log(`   Gas Used: ${receipt.gasUsed.toString()}`);
+
+    return { success: true, txHash: receipt.hash };
+
+  } catch (error) {
+    console.error(`❌ V4 on-chain verification failed:`, error.message);
+
+    // Check for specific error types
+    if (error.message.includes('PaymentNotOracleVerified')) {
+      return { success: false, error: 'Bill already verified or invalid state' };
+    }
+    if (error.message.includes('SignatureAlreadyUsed')) {
+      return { success: false, error: 'Signature already used' };
+    }
+    if (error.message.includes('InvalidSignature')) {
+      return { success: false, error: 'Invalid oracle signature' };
+    }
+
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * API endpoint to manually trigger V4 payment verification
+ * (for testing or manual intervention)
+ */
+app.post('/api/v4/verify-payment', express.json(), rateLimit, async (req, res) => {
+  const { billId, paymentReference, fiatAmount, adminKey } = req.body;
+
+  // Simple admin key check (replace with proper auth in production)
+  if (adminKey !== process.env.ADMIN_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!billId || !paymentReference || !fiatAmount) {
+    return res.status(400).json({ error: 'Missing required fields: billId, paymentReference, fiatAmount' });
+  }
+
+  const result = await verifyPaymentOnChainV4(billId, paymentReference, fiatAmount);
+
+  if (result.success) {
+    res.json({ success: true, txHash: result.txHash });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
-  console.log(`BillHaven Backend Server running on port ${PORT}`);
+  console.log(`\n========================================`);
+  console.log(`  BillHaven Backend Server (V4 Ready)`);
+  console.log(`========================================`);
+  console.log(`Port: ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`Stripe webhook: POST /webhooks/stripe`);
   console.log(`OpenNode webhook: POST /webhooks/opennode`);
+  console.log(`V4 Manual verify: POST /api/v4/verify-payment`);
+  console.log(`\n🔒 V4 Oracle Status:`);
+  console.log(`   Chain ID: ${V4_CONTRACT_CONFIG.chainId}`);
+  console.log(`   Contract: ${V4_CONTRACT_CONFIG.contractAddress}`);
+  console.log(`   Oracle configured: ${V4_CONTRACT_CONFIG.oraclePrivateKey ? '✅ YES' : '❌ NO'}`);
+  console.log(`========================================\n`);
 });

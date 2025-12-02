@@ -15,25 +15,54 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState(null)
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
+    // Timeout wrapper to prevent infinite loading state
+    const AUTH_TIMEOUT = 10000 // 10 seconds
+    let timeoutId = null
+    let isMounted = true
+
+    const getSessionWithTimeout = async () => {
+      return Promise.race([
+        supabase.auth.getSession(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth timeout - check your connection')), AUTH_TIMEOUT)
+        )
+      ])
+    }
+
+    // Check active session with timeout protection
+    getSessionWithTimeout()
+      .then(({ data: { session } }) => {
+        if (!isMounted) return
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          fetchProfile(session.user.id)
+        } else {
+          setLoading(false)
+        }
+      })
+      .catch((error) => {
+        if (!isMounted) return
+        console.error('Auth check failed:', error)
+        setAuthError(error.message)
+        setLoading(false) // CRITICAL: Always set loading to false on error
+      })
+
+    // Safety timeout - if loading is still true after 15 seconds, force it to false
+    timeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn('Auth loading timeout - forcing app to continue')
         setLoading(false)
       }
-    }).catch((error) => {
-      console.error('Error getting session:', error)
-      setLoading(false)
-    })
+    }, 15000)
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchProfile(session.user.id)
@@ -43,7 +72,11 @@ export function AuthProvider({ children }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const fetchProfile = async (userId) => {
@@ -158,6 +191,7 @@ export function AuthProvider({ children }) {
     user,
     profile,
     loading,
+    authError,
     signUp,
     signIn,
     signOut,

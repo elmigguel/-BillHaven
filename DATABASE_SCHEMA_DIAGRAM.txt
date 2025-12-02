@@ -1,0 +1,280 @@
+================================================================================
+BILLHAVEN DATABASE SCHEMA - VISUAL DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CORE TABLES (Base Schema)                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │   auth.users    │  (Supabase Auth)
+    │  (managed)      │
+    │─────────────────│
+    │ id              │◄────────────┐
+    │ email           │             │
+    │ created_at      │             │
+    └─────────────────┘             │
+            │                       │
+            │ (1:1)                 │ (FK)
+            ▼                       │
+    ┌─────────────────┐             │
+    │   profiles      │             │
+    │─────────────────│             │
+    │ id         PK   │─────────────┘
+    │ email           │
+    │ wallet_address  │◄────┐
+    │ role           │      │ (lookup)
+    │ created_at      │      │
+    └─────────────────┘      │
+            │                │
+            │ (1:N)          │
+            ▼                │
+    ┌─────────────────┐      │
+    │     bills       │      │
+    │─────────────────│      │
+    │ id         PK   │      │
+    │ seller_id  FK   │──────┤
+    │ buyer_id   FK   │──────┤
+    │ amount          │      │
+    │ status          │      │
+    │ payment_method  │      │
+    │ escrow_bill_id  │      │
+    └─────────────────┘      │
+            │                │
+            │ (1:N)          │
+            ▼                │
+    ┌─────────────────┐      │
+    │  transactions   │      │
+    │─────────────────│      │
+    │ id         PK   │      │
+    │ bill_id    FK   │──────┤
+    │ from_user  FK   │──────┤
+    │ to_user    FK   │──────┘
+    │ amount          │
+    │ type            │
+    └─────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PAYMENT VERIFICATION SYSTEM                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │     bills       │
+    └─────────────────┘
+            │
+            │ (1:1)
+            ▼
+    ┌──────────────────────┐         ┌──────────────────┐
+    │ payment_verifications│◄────────│  Mollie Webhook  │
+    │──────────────────────│         │  (external)      │
+    │ id              PK   │         └──────────────────┘
+    │ bill_id         FK   │
+    │ mollie_payment_id    │ (unique)
+    │ payer_address        │◄────┐
+    │ maker_address        │     │ (lookup)
+    │ signature            │     │
+    │ status               │     │
+    └──────────────────────┘     │
+                                 │
+    ┌──────────────────┐         │
+    │  user_velocity   │         │
+    │──────────────────│         │
+    │ wallet_address   │─────────┘
+    │ date             │
+    │ daily_volume     │
+    │ daily_trades     │
+    │ trust_level      │
+    └──────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         TRUST SCORE SYSTEM                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │   auth.users    │
+    └─────────────────┘
+            │
+            │ (1:1)
+            ▼
+    ┌──────────────────┐         ┌──────────────────┐
+    │  trust_profiles  │◄────────│ update_trust_    │
+    │──────────────────│  called │   score()        │
+    │ id          PK   │    by   │  FUNCTION        │
+    │ user_id     FK   │◄────────└──────────────────┘
+    │ score            │              │
+    │ level            │              │ (creates)
+    │ completed_trades │              ▼
+    │ total_volume_usd │         ┌──────────────────┐
+    │ kyc_verified     │         │  trust_events    │
+    │ disputes_won     │────────►│──────────────────│
+    └──────────────────┘  (logs) │ id          PK   │
+            │                    │ user_id     FK   │
+            │                    │ event_type       │
+            │                    │ points_change    │
+            │                    │ old_score        │
+            │                    │ new_score        │
+            │                    │ created_at       │
+            │                    └──────────────────┘
+            │
+            │ (N:1)
+            ▼
+    ┌──────────────────────┐     ┌──────────────────┐
+    │ hold_period_overrides│◄────│ get_hold_period()│
+    │──────────────────────│ used│  FUNCTION        │
+    │ id              PK   │  by └──────────────────┘
+    │ user_id         FK   │
+    │ payment_method       │
+    │ hold_seconds         │
+    │ valid_from           │
+    │ valid_until          │
+    │ is_active            │
+    └──────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         REFERRAL SYSTEM                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │   auth.users    │
+    └─────────────────┘
+        │         │
+        │         │ (1:N as referrer)
+        │         ▼
+        │     ┌──────────────────┐
+        │     │    referrals     │
+        │     │──────────────────│
+        │     │ id          PK   │
+        │     │ referrer_id FK   │──────┐
+        │     │ referred_id FK   │      │ (1:N)
+        │     │ referral_code    │      │
+        │     │ status           │      │
+        │     │ first_tx_amount  │      │
+        │     │ activated_at     │      │
+        │     └──────────────────┘      │
+        │             │                 │
+        │ (1:1)       │                 ▼
+        │             │         ┌──────────────────┐
+        │             │         │  discount_usage  │
+        │             │         │──────────────────│
+        │             │         │ id          PK   │
+        │             │         │ user_id     FK   │──┐
+        │             └────────►│ referral_id FK   │  │
+        │                       │ transaction_id FK│──┤
+        │                       │ amount           │  │
+        │                       │ discount_amount  │  │
+        │                       │ used_at          │  │
+        │                       └──────────────────┘  │
+        │                                             │
+        └─────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              VIEWS                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────┐         ┌──────────────────┐
+    │    referrals     │         │  discount_usage  │
+    └──────────────────┘         └──────────────────┘
+            │                            │
+            └────────────┬───────────────┘
+                         │ (aggregates)
+                         ▼
+            ┌──────────────────────────┐
+            │ user_discount_balance    │ (VIEW)
+            │──────────────────────────│
+            │ user_id                  │
+            │ active_referrals         │
+            │ transactions_used        │
+            │ volume_used              │
+            │ total_saved              │
+            │ transactions_remaining   │
+            │ volume_remaining         │
+            │ has_discount_available   │
+            └──────────────────────────┘
+
+    ┌──────────────────┐
+    │    referrals     │
+    └──────────────────┘
+            │ (aggregates)
+            ▼
+    ┌──────────────────────┐
+    │   referral_stats     │ (VIEW)
+    │──────────────────────│
+    │ user_id              │
+    │ referral_code        │
+    │ total_referrals      │
+    │ active_referrals     │
+    │ pending_referrals    │
+    │ first_referral_date  │
+    │ last_activation_date │
+    │ total_referred_volume│
+    └──────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SECURITY LAYERS                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌────────────────────────────────────────────────────────────┐
+    │                   Row Level Security (RLS)                  │
+    ├────────────────────────────────────────────────────────────┤
+    │  • Enabled on ALL tables                                   │
+    │  • Users: SELECT/UPDATE own records only                   │
+    │  • Admins: ALL operations on ALL records                   │
+    │  • Service Role: Full access for webhooks                  │
+    │  • 25+ policies protecting data                            │
+    └────────────────────────────────────────────────────────────┘
+
+    ┌────────────────────────────────────────────────────────────┐
+    │                    Trigger Validation                       │
+    ├────────────────────────────────────────────────────────────┤
+    │  • validate_referral_activation()                          │
+    │    └─ Prevents <$500 activation                           │
+    │  • check_discount_eligibility()                            │
+    │    └─ Enforces 3-tx & $10K caps                           │
+    │  • update_*_updated_at()                                   │
+    │    └─ Auto-timestamps (3 namespaced functions)            │
+    └────────────────────────────────────────────────────────────┘
+
+    ┌────────────────────────────────────────────────────────────┐
+    │                 Constraint Validation                       │
+    ├────────────────────────────────────────────────────────────┤
+    │  • Foreign Keys: CASCADE/SET NULL as appropriate           │
+    │  • Unique Constraints: referral_code, mollie_payment_id    │
+    │  • Check Constraints: status enums, event_type enums       │
+    │  • NOT NULL: Critical fields protected                     │
+    └────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      PERFORMANCE LAYER                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌────────────────────────────────────────────────────────────┐
+    │                    Index Coverage                           │
+    ├────────────────────────────────────────────────────────────┤
+    │  • ALL foreign keys indexed                                │
+    │  • ALL lookup columns indexed                              │
+    │  • Composite indexes for common queries                    │
+    │  • Partial indexes for status filters                      │
+    │  • 30+ indexes total                                       │
+    └────────────────────────────────────────────────────────────┘
+
+    Query Performance: O(log n) for all critical paths
+
+
+================================================================================
+LEGEND
+================================================================================
+
+PK = Primary Key
+FK = Foreign Key
+│  = One-to-One relationship
+├─ = One-to-Many relationship
+◄─ = Foreign Key reference
+── = Data flow
+
+================================================================================

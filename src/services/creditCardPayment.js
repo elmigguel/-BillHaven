@@ -117,7 +117,7 @@ export async function createPaymentIntent(amountCents, currency, billId, options
 
   try {
     // Call our backend to create the PaymentIntent
-    const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/payments/create-intent`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/create-payment-intent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -193,10 +193,41 @@ function TonWalletProviderInner({ children }) {
 
 // Main provider wrapper with TonConnectUIProvider
 export function TonWalletProvider({ children }) {
-  // Manifest URL - update this to your production domain
-  const manifestUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/tonconnect-manifest.json`
-    : '/tonconnect-manifest.json';
+  // Safe manifest URL that only constructs after client-side hydration
+  const [manifestUrl, setManifestUrl] = React.useState(null);
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    // Only construct URL after client-side mount
+    setIsClient(true);
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.origin}/tonconnect-manifest.json`;
+      setManifestUrl(url);
+    }
+  }, []);
+
+  // Don't render TonConnect provider until we have a valid manifest URL
+  // This prevents SSR/hydration crashes
+  if (!isClient || !manifestUrl) {
+    // Return children without TON functionality during SSR/initial load
+    return (
+      <TonWalletContext.Provider value={{
+        walletAddress: '',
+        isConnected: false,
+        isConnecting: false,
+        error: null,
+        connectWallet: () => console.warn('TON wallet loading...'),
+        disconnect: () => {},
+        sendTon: () => Promise.reject('TON wallet loading...'),
+        sendUSDT: () => Promise.reject('TON wallet loading...'),
+        formatAddress: (addr) => addr || '',
+        getExplorerUrl: () => '#',
+        network: 'mainnet'
+      }}>
+        {children}
+      </TonWalletContext.Provider>
+    );
+  }
 
   return (
     <TonConnectUIProvider manifestUrl={manifestUrl}>

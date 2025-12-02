@@ -1,0 +1,64 @@
+
+> bill-haven@0.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+[plugin:vite:resolve] [plugin vite:resolve] Module "crypto" has been externalized for browser compatibility, imported by "/home/elmigguel/BillHaven/node_modules/@toruslabs/eccrypto/dist/eccrypto.esm.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "stream" has been externalized for browser compatibility, imported by "/home/elmigguel/BillHaven/node_modules/cipher-base/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "stream" has been externalized for browser compatibility, imported by "/home/elmigguel/BillHaven/node_modules/hash-base/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+node_modules/@walletconnect/utils/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "node_modules/@walletconnect/utils/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/@walletconnect/utils/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "node_modules/@walletconnect/utils/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/@reown/appkit/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "node_modules/@reown/appkit/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/@reown/appkit/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "node_modules/@reown/appkit/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/Address.js (6:21): A comment
+
+"/*#__PURE__*/"
+
+in "node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/Address.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/internal/cursor.js (2:21): A comment
+
+"/*#__PURE__*/"
+
+in "node_modules/@reown/appkit-controllers/node_modules/ox/_esm/core/internal/cursor.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 8895 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                             2.65 kB │ gzip:   0.90 kB
+dist/assets/solana-wallet-BS3WYRrv.css      4.82 kB │ gzip:   1.35 kB
+dist/assets/index-B3q0oUZV.css             55.49 kB │ gzip:   9.36 kB
+dist/assets/wallet-vendor-DTH5StEQ.js       0.07 kB │ gzip:   0.08 kB
+dist/assets/solana-token-6ayMQFC4.js        3.70 kB │ gzip:   1.49 kB
+dist/assets/index-CVTwPxb1.js              14.81 kB │ gzip:   4.59 kB
+dist/assets/index-DRUjl3i7.js              31.39 kB │ gzip:   6.92 kB
+dist/assets/axios-vendor-CHJCK4ab.js       36.87 kB │ gzip:  14.89 kB
+dist/assets/query-vendor-CLfoE2Og.js       38.53 kB │ gzip:  11.48 kB
+dist/assets/ui-vendor-CLKi5TJU.js         113.40 kB │ gzip:  33.69 kB
+dist/assets/animation-vendor-CbrM6yxx.js  115.55 kB │ gzip:  38.18 kB
+dist/assets/solana-wallet-COGg4HgK.js     129.03 kB │ gzip:  40.11 kB
+dist/assets/ton-sdk-Lt7LRg5g.js           161.88 kB │ gzip:  38.20 kB
+dist/assets/supabase-vendor-60Yvdg7a.js   170.14 kB │ gzip:  43.50 kB
+dist/assets/react-vendor-DV0-wILh.js      185.00 kB │ gzip:  60.56 kB
+dist/assets/sentry-vendor-XFUVMlfi.js     253.74 kB │ gzip:  83.61 kB
+dist/assets/solana-core-BqNbXRmP.js       255.84 kB │ gzip:  74.97 kB
+dist/assets/index-C8JHY9I7.js             265.76 kB │ gzip:  70.48 kB
+dist/assets/ton-core-DNVIw19F.js          277.09 kB │ gzip:  84.84 kB
+dist/assets/ton-ui-DPSXDb7W.js            344.75 kB │ gzip: 104.05 kB
+dist/assets/evm-vendor-BAiu3DbI.js        411.13 kB │ gzip: 150.69 kB
+✓ built in 4m 41s
