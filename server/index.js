@@ -5,6 +5,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import Stripe from 'stripe';
 import crypto from 'crypto';
@@ -87,6 +88,21 @@ console.log('✅ Environment variables validated successfully');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Security headers with Helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'", "https://api.stripe.com", "https://api.opennode.com", "https://*.supabase.co", "wss://*.supabase.co"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow embedding for payment iframes
+}));
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
