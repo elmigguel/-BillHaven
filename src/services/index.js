@@ -31,6 +31,9 @@ export * from './trustScoreService';
 // Invisible Security (NO KYC - like online shops)
 export * from './invisibleSecurityService';
 
+// Referral & Affiliate System
+export * from './referralService';
+
 // Security Agents
 export * from '../agents/fraudDetectionAgent';
 export * from '../agents/holdPeriodAnalyzer';

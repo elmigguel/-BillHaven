@@ -850,6 +850,50 @@ contract BillHavenEscrowV3 is ReentrancyGuard, Pausable, AccessControl {
         return blockedMethods[_method];
     }
 
+    /**
+     * @notice Calculate recommended tiered fee for a fiat amount
+     * @dev This is a VIEW FUNCTION for reference only. Actual fee is passed by frontend.
+     * @param _fiatAmount Fiat amount in USD cents
+     * @param _hasAffiliateDiscount Whether user has affiliate discount (50% off <$10K tier)
+     * @return feeInBasisPoints The recommended fee in basis points (e.g., 440 = 4.4%)
+     * @return feeAmount The calculated fee amount in cents
+     *
+     * Tiered Fee Structure:
+     * - Under $10,000:      440 bp (4.4%) or 220 bp (2.2% with affiliate)
+     * - $10,000 - $20,000:  350 bp (3.5%)
+     * - $20,000 - $50,000:  280 bp (2.8%)
+     * - $50,000 - $500,000: 170 bp (1.7%)
+     * - $500,000 - $1M:     120 bp (1.2%)
+     * - Over $1,000,000:    80 bp (0.8%)
+     */
+    function calculateTieredFee(
+        uint256 _fiatAmount,
+        bool _hasAffiliateDiscount
+    ) external pure returns (uint256 feeInBasisPoints, uint256 feeAmount) {
+        // Convert cents to dollars for tier comparison
+        uint256 amountInDollars = _fiatAmount / 100;
+
+        if (amountInDollars >= 1000000) {
+            feeInBasisPoints = 80; // 0.8%
+        } else if (amountInDollars >= 500000) {
+            feeInBasisPoints = 120; // 1.2%
+        } else if (amountInDollars >= 50000) {
+            feeInBasisPoints = 170; // 1.7%
+        } else if (amountInDollars >= 20000) {
+            feeInBasisPoints = 280; // 2.8%
+        } else if (amountInDollars >= 10000) {
+            feeInBasisPoints = 350; // 3.5%
+        } else {
+            // Affiliate discount only applies to <$10K tier
+            feeInBasisPoints = _hasAffiliateDiscount ? 220 : 440; // 2.2% or 4.4%
+        }
+
+        // Calculate fee amount in cents
+        feeAmount = (_fiatAmount * feeInBasisPoints) / BASIS_POINTS;
+
+        return (feeInBasisPoints, feeAmount);
+    }
+
     // ============ ADMIN FUNCTIONS ============
 
     /**
