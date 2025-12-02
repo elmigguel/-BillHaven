@@ -15,38 +15,200 @@
       // DEBUG: Log when script starts executing
       console.log('[BillHaven] Initializing polyfills...');
 
-      // CRITICAL: Buffer polyfill must load BEFORE any module scripts
-      // This fixes "Buffer is not defined" for TON, Solana, and blockchain SDKs
+      // CRITICAL: Full Buffer polyfill for TON, Solana, and blockchain SDKs
       (function() {
-        if (typeof window.Buffer === 'undefined') {
-          window.Buffer = {
-            from: function(data, encoding) {
-              if (typeof data === 'string') {
-                if (encoding === 'hex') {
-                  var arr = new Uint8Array(data.length / 2);
-                  for (var i = 0; i < data.length; i += 2) {
-                    arr[i / 2] = parseInt(data.substr(i, 2), 16);
-                  }
-                  return arr;
-                }
-                return new TextEncoder().encode(data);
-              }
-              return new Uint8Array(data);
-            },
-            alloc: function(size) { return new Uint8Array(size); },
-            isBuffer: function(obj) { return obj instanceof Uint8Array; },
-            concat: function(list, totalLength) {
-              if (!totalLength) totalLength = list.reduce(function(acc, arr) { return acc + arr.length; }, 0);
-              var result = new Uint8Array(totalLength);
-              var offset = 0;
-              list.forEach(function(arr) { result.set(arr, offset); offset += arr.length; });
-              return result;
-            }
-          };
+        // Create a proper Buffer class that extends Uint8Array
+        function BufferPolyfill(arg, encodingOrOffset, length) {
+          var arr;
+          if (typeof arg === 'number') {
+            arr = new Uint8Array(arg);
+          } else if (typeof arg === 'string') {
+            arr = BufferPolyfill.from(arg, encodingOrOffset);
+          } else if (arg instanceof ArrayBuffer) {
+            arr = new Uint8Array(arg, encodingOrOffset, length);
+          } else if (ArrayBuffer.isView(arg)) {
+            arr = new Uint8Array(arg.buffer, arg.byteOffset, arg.byteLength);
+          } else if (Array.isArray(arg)) {
+            arr = new Uint8Array(arg);
+          } else {
+            arr = new Uint8Array(0);
+          }
+          // Add Buffer methods to the Uint8Array instance
+          Object.setPrototypeOf(arr, BufferPolyfill.prototype);
+          return arr;
         }
+
+        // Inherit from Uint8Array
+        BufferPolyfill.prototype = Object.create(Uint8Array.prototype);
+        BufferPolyfill.prototype.constructor = BufferPolyfill;
+
+        // copy method - CRITICAL for TON SDK
+        BufferPolyfill.prototype.copy = function(target, targetStart, sourceStart, sourceEnd) {
+          targetStart = targetStart || 0;
+          sourceStart = sourceStart || 0;
+          sourceEnd = sourceEnd || this.length;
+          var len = Math.min(sourceEnd - sourceStart, target.length - targetStart);
+          for (var i = 0; i < len; i++) {
+            target[targetStart + i] = this[sourceStart + i];
+          }
+          return len;
+        };
+
+        // slice method that returns Buffer
+        BufferPolyfill.prototype.slice = function(start, end) {
+          var sliced = Uint8Array.prototype.slice.call(this, start, end);
+          Object.setPrototypeOf(sliced, BufferPolyfill.prototype);
+          return sliced;
+        };
+
+        // subarray that returns Buffer
+        BufferPolyfill.prototype.subarray = function(start, end) {
+          var sub = Uint8Array.prototype.subarray.call(this, start, end);
+          Object.setPrototypeOf(sub, BufferPolyfill.prototype);
+          return sub;
+        };
+
+        // toString with encoding support
+        BufferPolyfill.prototype.toString = function(encoding) {
+          if (encoding === 'hex') {
+            return Array.from(this).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+          }
+          if (encoding === 'base64') {
+            var binary = '';
+            for (var i = 0; i < this.length; i++) { binary += String.fromCharCode(this[i]); }
+            return btoa(binary);
+          }
+          return new TextDecoder().decode(this);
+        };
+
+        // write method
+        BufferPolyfill.prototype.write = function(string, offset, length, encoding) {
+          offset = offset || 0;
+          var bytes = new TextEncoder().encode(string);
+          var len = Math.min(bytes.length, length || this.length - offset);
+          for (var i = 0; i < len; i++) { this[offset + i] = bytes[i]; }
+          return len;
+        };
+
+        // readUInt methods
+        BufferPolyfill.prototype.readUInt8 = function(offset) { return this[offset]; };
+        BufferPolyfill.prototype.readUInt16BE = function(offset) { return (this[offset] << 8) | this[offset + 1]; };
+        BufferPolyfill.prototype.readUInt16LE = function(offset) { return this[offset] | (this[offset + 1] << 8); };
+        BufferPolyfill.prototype.readUInt32BE = function(offset) { return (this[offset] << 24) | (this[offset + 1] << 16) | (this[offset + 2] << 8) | this[offset + 3]; };
+        BufferPolyfill.prototype.readUInt32LE = function(offset) { return this[offset] | (this[offset + 1] << 8) | (this[offset + 2] << 16) | (this[offset + 3] << 24); };
+
+        // writeUInt methods
+        BufferPolyfill.prototype.writeUInt8 = function(value, offset) { this[offset] = value & 0xff; return offset + 1; };
+        BufferPolyfill.prototype.writeUInt16BE = function(value, offset) { this[offset] = (value >> 8) & 0xff; this[offset + 1] = value & 0xff; return offset + 2; };
+        BufferPolyfill.prototype.writeUInt16LE = function(value, offset) { this[offset] = value & 0xff; this[offset + 1] = (value >> 8) & 0xff; return offset + 2; };
+        BufferPolyfill.prototype.writeUInt32BE = function(value, offset) { this[offset] = (value >> 24) & 0xff; this[offset + 1] = (value >> 16) & 0xff; this[offset + 2] = (value >> 8) & 0xff; this[offset + 3] = value & 0xff; return offset + 4; };
+        BufferPolyfill.prototype.writeUInt32LE = function(value, offset) { this[offset] = value & 0xff; this[offset + 1] = (value >> 8) & 0xff; this[offset + 2] = (value >> 16) & 0xff; this[offset + 3] = (value >> 24) & 0xff; return offset + 4; };
+
+        // equals and compare
+        BufferPolyfill.prototype.equals = function(other) {
+          if (this.length !== other.length) return false;
+          for (var i = 0; i < this.length; i++) { if (this[i] !== other[i]) return false; }
+          return true;
+        };
+        BufferPolyfill.prototype.compare = function(other) {
+          var len = Math.min(this.length, other.length);
+          for (var i = 0; i < len; i++) {
+            if (this[i] < other[i]) return -1;
+            if (this[i] > other[i]) return 1;
+          }
+          if (this.length < other.length) return -1;
+          if (this.length > other.length) return 1;
+          return 0;
+        };
+
+        // fill method
+        BufferPolyfill.prototype.fill = function(value, start, end) {
+          start = start || 0;
+          end = end || this.length;
+          for (var i = start; i < end; i++) { this[i] = value; }
+          return this;
+        };
+
+        // Static methods
+        BufferPolyfill.from = function(data, encoding) {
+          if (data instanceof BufferPolyfill) return data;
+          if (typeof data === 'string') {
+            var arr;
+            if (encoding === 'hex') {
+              arr = new Uint8Array(data.length / 2);
+              for (var i = 0; i < data.length; i += 2) {
+                arr[i / 2] = parseInt(data.substr(i, 2), 16);
+              }
+            } else if (encoding === 'base64') {
+              var binary = atob(data);
+              arr = new Uint8Array(binary.length);
+              for (var j = 0; j < binary.length; j++) { arr[j] = binary.charCodeAt(j); }
+            } else {
+              arr = new TextEncoder().encode(data);
+            }
+            Object.setPrototypeOf(arr, BufferPolyfill.prototype);
+            return arr;
+          }
+          if (ArrayBuffer.isView(data)) {
+            var copy = new Uint8Array(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength));
+            Object.setPrototypeOf(copy, BufferPolyfill.prototype);
+            return copy;
+          }
+          if (data instanceof ArrayBuffer) {
+            var view = new Uint8Array(data);
+            Object.setPrototypeOf(view, BufferPolyfill.prototype);
+            return view;
+          }
+          if (Array.isArray(data)) {
+            var uint = new Uint8Array(data);
+            Object.setPrototypeOf(uint, BufferPolyfill.prototype);
+            return uint;
+          }
+          var empty = new Uint8Array(0);
+          Object.setPrototypeOf(empty, BufferPolyfill.prototype);
+          return empty;
+        };
+
+        BufferPolyfill.alloc = function(size, fill) {
+          var arr = new Uint8Array(size);
+          if (fill !== undefined) arr.fill(fill);
+          Object.setPrototypeOf(arr, BufferPolyfill.prototype);
+          return arr;
+        };
+
+        BufferPolyfill.allocUnsafe = BufferPolyfill.alloc;
+        BufferPolyfill.allocUnsafeSlow = BufferPolyfill.alloc;
+
+        BufferPolyfill.isBuffer = function(obj) {
+          return obj instanceof BufferPolyfill || obj instanceof Uint8Array;
+        };
+
+        BufferPolyfill.isEncoding = function(encoding) {
+          return ['utf8', 'utf-8', 'hex', 'base64', 'ascii', 'binary', 'latin1'].indexOf(encoding) !== -1;
+        };
+
+        BufferPolyfill.byteLength = function(string, encoding) {
+          if (encoding === 'hex') return string.length / 2;
+          if (encoding === 'base64') return Math.ceil(string.length * 3 / 4);
+          return new TextEncoder().encode(string).length;
+        };
+
+        BufferPolyfill.concat = function(list, totalLength) {
+          if (!totalLength) totalLength = list.reduce(function(acc, arr) { return acc + arr.length; }, 0);
+          var result = new Uint8Array(totalLength);
+          var offset = 0;
+          list.forEach(function(arr) { result.set(arr, offset); offset += arr.length; });
+          Object.setPrototypeOf(result, BufferPolyfill.prototype);
+          return result;
+        };
+
+        BufferPolyfill.compare = function(a, b) { return BufferPolyfill.from(a).compare(BufferPolyfill.from(b)); };
+
+        // Set as global Buffer
+        window.Buffer = BufferPolyfill;
         window.global = window;
         window.process = window.process || { env: {} };
-        console.log('[BillHaven] Polyfills loaded successfully');
+        console.log('[BillHaven] Full Buffer polyfill loaded successfully');
       })();
 
       // DEBUG: Catch any unhandled errors
