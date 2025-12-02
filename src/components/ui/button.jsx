@@ -38,11 +38,10 @@ const buttonVariants = cva(
 const Button = React.forwardRef(({ className, variant, size, asChild = false, animated = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
 
-  // If animated prop is true, wrap with motion
+  // If animated prop is true, use motion.button directly to avoid forwardRef issues
   if (animated && !asChild) {
-    const MotionButton = motion(Comp);
     return (
-      <MotionButton
+      <motion.button
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         whileHover={{ scale: 1.02 }}

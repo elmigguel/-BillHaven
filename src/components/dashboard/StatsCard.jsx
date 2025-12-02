@@ -2,12 +2,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from "@/components/ui/card";
 
-const MotionCard = motion(Card);
+// Note: Using motion.div wrapper instead of motion(Card) to avoid forwardRef issues
 
 export default function StatsCard({ title, value, icon: Icon, color, subtitle, index = 0 }) {
   return (
-    <MotionCard
-      className="border border-gray-700 shadow-lg bg-gray-800"
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -21,6 +20,7 @@ export default function StatsCard({ title, value, icon: Icon, color, subtitle, i
         transition: { duration: 0.15 }
       }}
     >
+      <Card className="border border-gray-700 shadow-lg bg-gray-800 h-full">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -73,6 +73,7 @@ export default function StatsCard({ title, value, icon: Icon, color, subtitle, i
           </motion.div>
         </div>
       </CardContent>
-    </MotionCard>
+      </Card>
+    </motion.div>
   );
 }

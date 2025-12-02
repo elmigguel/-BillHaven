@@ -77,21 +77,21 @@ const amountVariants = {
   }
 };
 
-const MotionCard = motion(Card);
+// Note: Using motion.div wrapper instead of motion(Card) to avoid forwardRef issues
 
 export default function BillCard({ bill, onViewDetails, showActions = false, onApprove, onReject, onMarkPaid, index = 0 }) {
   const status = statusConfig[bill.status] || statusConfig.pending;
   const StatusIcon = status.icon;
 
   return (
-    <MotionCard
-      className="group border border-gray-700 bg-gray-800 overflow-hidden"
+    <motion.div
       variants={cardVariants}
       initial="hidden"
       animate="visible"
       whileHover="hover"
       transition={{ delay: index * 0.05 }}
     >
+      <Card className="group border border-gray-700 bg-gray-800 overflow-hidden h-full">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -207,7 +207,7 @@ export default function BillCard({ bill, onViewDetails, showActions = false, onA
         )}
 
         {!showActions && (
-          <Button 
+          <Button
             onClick={() => onViewDetails?.(bill)}
             variant="outline"
             className="w-full mt-2 border-gray-600 text-gray-300 hover:bg-gray-700"
@@ -217,6 +217,7 @@ export default function BillCard({ bill, onViewDetails, showActions = false, onA
           </Button>
         )}
       </CardContent>
-    </MotionCard>
+      </Card>
+    </motion.div>
   );
 }
