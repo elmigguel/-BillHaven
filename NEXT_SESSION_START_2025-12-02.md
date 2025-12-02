@@ -247,7 +247,7 @@ Insufficient funds: 4000 0000 0000 9995
 ```bash
 # Stripe (Test Mode)
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51SZVt6Rk2Ui2LpnZ...SnmZ
-STRIPE_SECRET_KEY=sk_test_51SZVt6Rk2Ui2LpnZ...Uwfc
+STRIPE_SECRET_KEY=sk_test_***REDACTED***Uwfc
 
 # OpenNode (Production - Free Tier)
 VITE_OPENNODE_API_KEY=e88ab3b3-f11d-44ad-b6c2-fec8fd79a9ae

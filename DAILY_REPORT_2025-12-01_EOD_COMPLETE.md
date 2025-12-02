@@ -175,7 +175,7 @@ Series A (€10-20M)
 
 **Stripe Test Keys:**
 - Publishable: pk_test_51SZVt6Rk2Ui2LpnZ...SnmZ
-- Secret: sk_test_51SZVt6Rk2Ui2LpnZ...Uwfc
+- Secret: sk_test_***REDACTED***Uwfc
 - Supports: iDEAL, SEPA, Bancontact, SOFORT, Credit Cards (3D Secure)
 
 **OpenNode Production Key:**

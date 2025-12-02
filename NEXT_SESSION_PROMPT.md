@@ -53,7 +53,7 @@ Je gaat verder werken aan BillHaven, een multi-chain P2P fiat-to-crypto escrow p
 
 ## API KEYS (TEST MODE)
 - Stripe Publishable: pk_test_51SZVt6Rk2Ui2LpnZHYLIXYwTKvJ7gpZyw6T20P9quaC4dv1VRwdPKSZZGemjeU7EE3WjkIkO27z6G7JWaTxsN83W0068DGSnmZ
-- Stripe Secret: sk_test_REDACTED
+- Stripe Secret: sk_test_***STRIPE_SECRET_REDACTED***
 - OpenNode: e88ab3b3-f11d-44ad-b6c2-fec8fd79a9ae
 
 ## BELANGRIJKE BESLISSINGEN (NIET VERANDEREN):

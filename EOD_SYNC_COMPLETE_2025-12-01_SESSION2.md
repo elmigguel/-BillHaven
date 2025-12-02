@@ -70,7 +70,7 @@
    - Supports: iDEAL, SEPA, Bancontact, SOFORT, Credit Cards
 
 2. **Stripe Secret Key** (Test Mode)
-   - Value: sk_test_REDACTED
+   - Value: sk_test_***STRIPE_SECRET_REDACTED***
    - Location: `.env` (line 28)
    - Backend processing
 

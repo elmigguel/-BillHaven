@@ -145,7 +145,7 @@ DEPLOYER_PRIVATE_KEY=0xd86a035c81c84b4df86722c74b97f251c3fd4873744d4c9727351c40c
 
 **CRITICAL #5: STRIPE SECRET KEY EXPOSED** (LIJN 28)
 ```env
-STRIPE_SECRET_KEY=sk_test_REDACTED
+STRIPE_SECRET_KEY=sk_test_***STRIPE_SECRET_REDACTED***
 ```
 **Risk:** Test key, maar **NOOIT** secret keys in frontend code
 **Impact:** HIGH - Iemand kan payments creëren/capturen

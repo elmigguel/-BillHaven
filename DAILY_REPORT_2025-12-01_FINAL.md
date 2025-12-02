@@ -29,7 +29,7 @@ Today we completed the API configuration phase for BillHaven. All payment proces
 ```
 Publishable Key: pk_test_51SZVt6Rk2Ui2LpnZHYLIXYwTKvJ7gpZyw6T20P9quaC4dv1VRwdPKSZZGemjeU7EE3WjkIkO27z6G7JWaTxsN83W0068DGSnmZ
 
-Secret Key: sk_test_REDACTED
+Secret Key: sk_test_***STRIPE_SECRET_REDACTED***
 ```
 
 **Supported Payment Methods:**

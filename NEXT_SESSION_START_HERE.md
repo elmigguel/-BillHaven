@@ -103,7 +103,7 @@
 ### Stripe (Test Mode - Already in .env)
 ```
 Publishable: pk_test_51SZVt6Rk2Ui2LpnZ...
-Secret: sk_test_51SZVt6Rk2Ui2LpnZ...
+Secret: sk_test_***REDACTED***
 ```
 
 ### OpenNode (Production - Already in .env)

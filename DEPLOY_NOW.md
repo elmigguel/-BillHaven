@@ -19,7 +19,7 @@
 Klik "Environment" en voeg toe:
 
 ```
-STRIPE_SECRET_KEY = sk_test_REDACTED
+STRIPE_SECRET_KEY = sk_test_***STRIPE_SECRET_REDACTED***
 
 STRIPE_WEBHOOK_SECRET = whsec_b0v3xwHp93Z3Ecgr8Cg8wuHSiZ4fI9Ah
 
