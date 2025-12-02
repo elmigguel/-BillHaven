@@ -15,7 +15,7 @@ import {
   Globe
 } from 'lucide-react';
 
-const MotionButton = motion(Button);
+// Note: Using motion.div wrapper instead of motion(Button) to avoid forwardRef issues
 
 export default function Home() {
   return (
@@ -55,30 +55,36 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
           >
             <Link to={createPageUrl('PublicBills')}>
-              <MotionButton
-                size="lg"
-                className="bg-indigo-600 hover:bg-indigo-700 text-lg px-8 py-6 shadow-lg hover:shadow-indigo-500/50 transition-shadow duration-300"
+              <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.15 }}
               >
-                <Globe className="w-5 h-5 mr-2" />
-                View Available Bills
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </MotionButton>
+                <Button
+                  size="lg"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-lg px-8 py-6 shadow-lg hover:shadow-indigo-500/50 transition-shadow duration-300"
+                >
+                  <Globe className="w-5 h-5 mr-2" />
+                  View Available Bills
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </motion.div>
             </Link>
             <Link to={createPageUrl('Dashboard')}>
-              <MotionButton
-                size="lg"
-                variant="outline"
-                className="border-indigo-500 text-indigo-400 hover:bg-indigo-950 hover:border-indigo-400 text-lg px-8 py-6 shadow-lg transition-all duration-300"
+              <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{ duration: 0.15 }}
               >
-                <Receipt className="w-5 h-5 mr-2" />
-                Submit a Bill
-              </MotionButton>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-indigo-500 text-indigo-400 hover:bg-indigo-950 hover:border-indigo-400 text-lg px-8 py-6 shadow-lg transition-all duration-300"
+                >
+                  <Receipt className="w-5 h-5 mr-2" />
+                  Submit a Bill
+                </Button>
+              </motion.div>
             </Link>
           </motion.div>
         </div>
@@ -234,16 +240,19 @@ export default function Home() {
           transition={{ duration: 0.5, delay: 0.2, type: 'spring', stiffness: 200 }}
         >
           <Link to={createPageUrl('PublicBills')}>
-            <MotionButton
-              size="lg"
-              className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-lg px-12 py-6 shadow-xl hover:shadow-indigo-500/50 transition-shadow duration-300"
+            <motion.div
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.15 }}
             >
-              Start Now
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </MotionButton>
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-lg px-12 py-6 shadow-xl hover:shadow-indigo-500/50 transition-shadow duration-300"
+              >
+                Start Now
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </motion.div>
           </Link>
         </motion.div>
       </div>
