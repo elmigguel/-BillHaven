@@ -1,6 +1,14 @@
 /**
- * BillHaven Backend Server
+ * BillHaven Backend Server - Production-Ready Version
  * Handles webhooks for Stripe and OpenNode payment confirmations
+ *
+ * PRODUCTION ENHANCEMENTS:
+ * - Helmet.js security headers
+ * - Request ID tracking for logs
+ * - Structured JSON logging
+ * - Enhanced health checks with detailed diagnostics
+ * - Rate limiting with cleanup
+ * - Sensitive data filtering
  */
 
 import express from 'express';
@@ -8,9 +16,65 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import Stripe from 'stripe';
 import crypto from 'crypto';
+import helmet from 'helmet';
 import { createClient } from '@supabase/supabase-js';
 
-// Simple in-memory rate limiter
+// ==========================================
+// REQUEST ID MIDDLEWARE (for log tracing)
+// ==========================================
+function generateRequestId() {
+  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function requestIdMiddleware(req, res, next) {
+  req.id = generateRequestId();
+  res.setHeader('X-Request-ID', req.id);
+  next();
+}
+
+// ==========================================
+// LOGGING UTILITY (production-safe)
+// ==========================================
+const logger = {
+  info: (message, meta = {}) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      timestamp: new Date().toISOString(),
+      message,
+      ...meta,
+      requestId: meta.requestId || 'no-request-id'
+    }));
+  },
+  warn: (message, meta = {}) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      timestamp: new Date().toISOString(),
+      message,
+      ...meta,
+      requestId: meta.requestId || 'no-request-id'
+    }));
+  },
+  error: (message, meta = {}) => {
+    // Filter sensitive data from logs
+    const sanitizedMeta = { ...meta };
+    delete sanitizedMeta.apiKey;
+    delete sanitizedMeta.secret;
+    delete sanitizedMeta.privateKey;
+    delete sanitizedMeta.password;
+
+    console.error(JSON.stringify({
+      level: 'error',
+      timestamp: new Date().toISOString(),
+      message,
+      ...sanitizedMeta,
+      requestId: meta.requestId || 'no-request-id'
+    }));
+  }
+};
+
+// ==========================================
+// RATE LIMITER (in-memory with cleanup)
+// ==========================================
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 30; // 30 requests per minute
@@ -32,6 +96,7 @@ function rateLimit(req, res, next) {
   }
 
   if (record.count >= RATE_LIMIT_MAX) {
+    logger.warn('Rate limit exceeded', { requestId: req.id, ip });
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
 
@@ -39,14 +104,23 @@ function rateLimit(req, res, next) {
   next();
 }
 
-// Load environment variables
+// Cleanup rate limiter every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitMap.entries()) {
+    if (now - record.startTime > RATE_LIMIT_WINDOW * 5) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// ==========================================
+// ENVIRONMENT CONFIGURATION
+// ==========================================
 // Try multiple paths for different deployment environments
 dotenv.config({ path: '../.env' }); // Local development
 dotenv.config(); // Default (checks .env in current directory and parent directories)
 
-// ==========================================
-// CRITICAL: Environment Variable Validation
-// ==========================================
 // Helper function to get env var with or without VITE_ prefix
 function getEnvVar(name) {
   return process.env[name] || process.env[`VITE_${name}`] || null;
@@ -68,25 +142,23 @@ const REQUIRED_ENV_VARS = [
 const MISSING_ENV_VARS = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
 
 if (MISSING_ENV_VARS.length > 0) {
-  console.error('\n❌ CRITICAL ERROR: Missing required environment variables:');
-  MISSING_ENV_VARS.forEach(varName => {
-    console.error(`   - ${varName} (or VITE_${varName})`);
-  });
-  console.error('\n📝 Please add these to your .env file (see .env.example for reference)\n');
+  logger.error('Missing required environment variables', { missing: MISSING_ENV_VARS });
   process.exit(1);
 }
 
 // Validate webhook secret format (Stripe webhook secrets start with whsec_)
 if (!process.env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_')) {
-  console.warn('\n⚠️  WARNING: STRIPE_WEBHOOK_SECRET does not start with "whsec_"');
-  console.warn('   This might not be a valid Stripe webhook secret.');
-  console.warn('   Get the correct secret from: https://dashboard.stripe.com/webhooks\n');
+  logger.warn('STRIPE_WEBHOOK_SECRET does not start with "whsec_" - might not be valid');
 }
 
-console.log('✅ Environment variables validated successfully');
+logger.info('Environment variables validated successfully');
 
+// ==========================================
+// EXPRESS APP SETUP
+// ==========================================
 const app = express();
 const PORT = process.env.PORT || 3001;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -97,9 +169,59 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-console.log('✅ Supabase client initialized:', {
-  url: process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.substring(0, 30)}...` : 'MISSING',
-  keyLength: process.env.SUPABASE_ANON_KEY ? process.env.SUPABASE_ANON_KEY.length : 0
+logger.info('Services initialized', {
+  supabaseUrl: process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.substring(0, 30)}...` : 'MISSING',
+  environment: process.env.NODE_ENV || 'development'
+});
+
+// ==========================================
+// SECURITY MIDDLEWARE
+// ==========================================
+// Helmet.js security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://api.stripe.com", "https://api.opennode.com"],
+    },
+  },
+  crossOriginEmbedderPolicy: !IS_PRODUCTION, // Disable in dev for easier testing
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin requests
+}));
+
+// HTTPS enforcement (in production)
+if (IS_PRODUCTION) {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect('https://' + req.headers.host + req.url);
+    }
+    next();
+  });
+}
+
+// Request ID tracking
+app.use(requestIdMiddleware);
+
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info('Request completed', {
+      requestId: req.id,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip || req.connection.remoteAddress
+    });
+  });
+
+  next();
 });
 
 // CORS configuration
@@ -112,6 +234,9 @@ app.use(cors({
   credentials: true
 }));
 
+// ==========================================
+// WEBHOOK ROUTES (raw body required)
+// ==========================================
 // Stripe webhook needs raw body
 app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -121,38 +246,42 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
 
   // SECURITY: Always require webhook signature verification
   if (!endpointSecret) {
-    console.error('CRITICAL: STRIPE_WEBHOOK_SECRET not configured');
+    logger.error('STRIPE_WEBHOOK_SECRET not configured', { requestId: req.id });
     return res.status(500).json({ error: 'Webhook configuration error' });
   }
 
   try {
     // Verify webhook signature - REQUIRED for security
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    logger.info('Stripe webhook verified', { requestId: req.id, type: event.type });
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    logger.error('Stripe webhook signature verification failed', {
+      requestId: req.id,
+      error: err.message
+    });
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   // Handle the event
   switch (event.type) {
     case 'payment_intent.succeeded':
-      await handlePaymentSuccess(event.data.object);
+      await handlePaymentSuccess(event.data.object, req.id);
       break;
 
     case 'payment_intent.payment_failed':
-      await handlePaymentFailure(event.data.object);
+      await handlePaymentFailure(event.data.object, req.id);
       break;
 
     case 'charge.dispute.created':
-      await handleDisputeCreated(event.data.object);
+      await handleDisputeCreated(event.data.object, req.id);
       break;
 
     case 'charge.refunded':
-      await handleRefund(event.data.object);
+      await handleRefund(event.data.object, req.id);
       break;
 
     default:
-      console.log(`Unhandled event type: ${event.type}`);
+      logger.info('Unhandled Stripe event type', { requestId: req.id, type: event.type });
   }
 
   res.json({ received: true });
@@ -160,18 +289,18 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
 
 // OpenNode webhook (Lightning payments) - with HMAC verification
 app.post('/webhooks/opennode', express.json(), async (req, res) => {
-  const { id, status, hashed_order, callback_url } = req.body;
+  const { id, status } = req.body;
   const receivedSignature = req.headers['x-opennode-signature'];
   const apiKey = process.env.OPENNODE_API_KEY;
 
   // SECURITY: Verify OpenNode webhook signature - REQUIRED for production
   if (!apiKey) {
-    console.error('CRITICAL: OPENNODE_API_KEY not configured for signature verification');
+    logger.error('OPENNODE_API_KEY not configured', { requestId: req.id });
     return res.status(500).json({ error: 'Webhook configuration error - API key required' });
   }
 
   if (!receivedSignature) {
-    console.error('OpenNode webhook missing signature header');
+    logger.error('OpenNode webhook missing signature', { requestId: req.id });
     return res.status(401).json({ error: 'Missing signature' });
   }
 
@@ -189,97 +318,112 @@ app.post('/webhooks/opennode', express.json(), async (req, res) => {
     );
 
   if (!isValid) {
-    console.error('OpenNode webhook signature verification failed');
+    logger.error('OpenNode webhook signature verification failed', { requestId: req.id });
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
-  console.log('OpenNode webhook received:', { id, status });
+  logger.info('OpenNode webhook received', { requestId: req.id, id, status });
 
   try {
     if (status === 'paid') {
-      await handleLightningPaymentSuccess(id, req.body);
+      await handleLightningPaymentSuccess(id, req.body, req.id);
     } else if (status === 'processing') {
-      console.log('Lightning payment processing:', id);
+      logger.info('Lightning payment processing', { requestId: req.id, id });
     } else if (status === 'underpaid' || status === 'expired') {
-      await handleLightningPaymentFailure(id, status, req.body);
+      await handleLightningPaymentFailure(id, status, req.body, req.id);
     }
 
     res.json({ received: true });
   } catch (error) {
-    console.error('OpenNode webhook error:', error);
+    logger.error('OpenNode webhook error', { requestId: req.id, error: error.message });
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 
-// JSON parser for other routes
+// ==========================================
+// JSON PARSER FOR API ROUTES
+// ==========================================
 app.use(express.json());
 
-// Health check endpoint with service status
+// ==========================================
+// HEALTH CHECK ENDPOINT
+// ==========================================
 app.get('/health', async (req, res) => {
+  const startTime = Date.now();
   const status = {
     status: 'ok',
     timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0',
     services: {},
-    errors: {}
+    errors: {},
+    performance: {}
   };
 
   // Check Supabase connection
+  const supabaseStart = Date.now();
   try {
     const { data, error } = await supabase.from('bills').select('count', { count: 'exact', head: true });
+    status.performance.supabase = `${Date.now() - supabaseStart}ms`;
+
     if (error) {
-      console.error('Supabase health check error:', error);
+      logger.error('Supabase health check error', { requestId: req.id, error: error.message });
       status.services.supabase = 'error';
       status.errors.supabase = {
         message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
+        code: error.code
       };
     } else {
       status.services.supabase = 'ok';
     }
   } catch (error) {
-    console.error('Supabase health check exception:', error);
+    status.performance.supabase = `${Date.now() - supabaseStart}ms`;
+    logger.error('Supabase health check exception', { requestId: req.id, error: error.message });
     status.services.supabase = 'error';
     status.errors.supabase = {
-      message: error.message,
-      stack: error.stack
+      message: error.message
     };
   }
 
   // Check Stripe API
+  const stripeStart = Date.now();
   try {
     await stripe.paymentIntents.list({ limit: 1 });
+    status.performance.stripe = `${Date.now() - stripeStart}ms`;
     status.services.stripe = 'ok';
   } catch (error) {
-    console.error('Stripe health check error:', error);
+    status.performance.stripe = `${Date.now() - stripeStart}ms`;
+    logger.error('Stripe health check error', { requestId: req.id, error: error.message });
     status.services.stripe = 'error';
     status.errors.stripe = {
       message: error.message,
-      type: error.type,
-      code: error.code
+      type: error.type
     };
   }
 
   // Check OpenNode API
+  const opennodeStart = Date.now();
   try {
     const response = await fetch('https://api.opennode.com/v1/currencies', {
       headers: {
         'Authorization': process.env.OPENNODE_API_KEY
       }
     });
+    status.performance.opennode = `${Date.now() - opennodeStart}ms`;
+
     if (response.ok) {
       status.services.opennode = 'ok';
     } else {
       status.services.opennode = 'error';
       status.errors.opennode = {
         message: 'OpenNode API returned non-OK status',
-        status: response.status,
-        statusText: response.statusText
+        status: response.status
       };
     }
   } catch (error) {
-    console.error('OpenNode health check error:', error);
+    status.performance.opennode = `${Date.now() - opennodeStart}ms`;
+    logger.error('OpenNode health check error', { requestId: req.id, error: error.message });
     status.services.opennode = 'error';
     status.errors.opennode = {
       message: error.message
@@ -288,15 +432,28 @@ app.get('/health', async (req, res) => {
 
   // Set overall status
   const allServicesOk = Object.values(status.services).every(s => s === 'ok');
-  status.status = allServicesOk ? 'ok' : 'degraded';
+  status.status = allServicesOk ? 'healthy' : 'degraded';
+  status.performance.total = `${Date.now() - startTime}ms`;
 
-  res.json(status);
+  // Return appropriate HTTP status code
+  const httpStatus = allServicesOk ? 200 : 503;
+  res.status(httpStatus).json(status);
 });
 
+// ==========================================
+// API ROUTES
+// ==========================================
 // Create Stripe PaymentIntent - with rate limiting
 app.post('/api/create-payment-intent', rateLimit, async (req, res) => {
   try {
     const { amount, currency, billId, paymentMethod } = req.body;
+
+    logger.info('Creating payment intent', {
+      requestId: req.id,
+      billId,
+      amount,
+      currency
+    });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Stripe uses cents
@@ -313,7 +470,10 @@ app.post('/api/create-payment-intent', rateLimit, async (req, res) => {
       paymentIntentId: paymentIntent.id
     });
   } catch (error) {
-    console.error('PaymentIntent creation error:', error);
+    logger.error('PaymentIntent creation error', {
+      requestId: req.id,
+      error: error.message
+    });
     res.status(500).json({ error: error.message });
   }
 });
@@ -322,6 +482,13 @@ app.post('/api/create-payment-intent', rateLimit, async (req, res) => {
 app.post('/api/create-lightning-invoice', rateLimit, async (req, res) => {
   try {
     const { amount, currency, billId, description } = req.body;
+
+    logger.info('Creating lightning invoice', {
+      requestId: req.id,
+      billId,
+      amount,
+      currency
+    });
 
     const response = await fetch('https://api.opennode.com/v1/charges', {
       method: 'POST',
@@ -354,12 +521,17 @@ app.post('/api/create-lightning-invoice', rateLimit, async (req, res) => {
       expiresAt: data.data.expires_at
     });
   } catch (error) {
-    console.error('Lightning invoice creation error:', error);
+    logger.error('Lightning invoice creation error', {
+      requestId: req.id,
+      error: error.message
+    });
     res.status(500).json({ error: error.message });
   }
 });
 
-// Helper functions
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
 function getPaymentMethodTypes(method) {
   switch (method) {
     case 'IDEAL':
@@ -385,9 +557,12 @@ function getPaymentMethodTypes(method) {
   }
 }
 
-async function handlePaymentSuccess(paymentIntent) {
+// ==========================================
+// WEBHOOK HANDLERS
+// ==========================================
+async function handlePaymentSuccess(paymentIntent, requestId) {
   const billId = paymentIntent.metadata.billId;
-  console.log(`Payment succeeded for bill ${billId}:`, paymentIntent.id);
+  logger.info('Payment succeeded', { requestId, billId, paymentIntentId: paymentIntent.id });
 
   try {
     // Update bill status in Supabase
@@ -401,7 +576,7 @@ async function handlePaymentSuccess(paymentIntent) {
       .eq('id', billId);
 
     if (error) {
-      console.error('Failed to update bill status:', error);
+      logger.error('Failed to update bill status', { requestId, billId, error: error.message });
     }
 
     // Log the transaction
@@ -416,13 +591,13 @@ async function handlePaymentSuccess(paymentIntent) {
     });
 
   } catch (error) {
-    console.error('Error processing payment success:', error);
+    logger.error('Error processing payment success', { requestId, billId, error: error.message });
   }
 }
 
-async function handlePaymentFailure(paymentIntent) {
+async function handlePaymentFailure(paymentIntent, requestId) {
   const billId = paymentIntent.metadata.billId;
-  console.log(`Payment failed for bill ${billId}:`, paymentIntent.id);
+  logger.warn('Payment failed', { requestId, billId, paymentIntentId: paymentIntent.id });
 
   try {
     await supabase
@@ -434,12 +609,12 @@ async function handlePaymentFailure(paymentIntent) {
       .eq('id', billId);
 
   } catch (error) {
-    console.error('Error processing payment failure:', error);
+    logger.error('Error processing payment failure', { requestId, billId, error: error.message });
   }
 }
 
-async function handleDisputeCreated(dispute) {
-  console.log('DISPUTE CREATED:', dispute.id);
+async function handleDisputeCreated(dispute, requestId) {
+  logger.error('DISPUTE CREATED - CRITICAL', { requestId, disputeId: dispute.id });
 
   // This is CRITICAL - a chargeback has been initiated
   try {
@@ -461,18 +636,21 @@ async function handleDisputeCreated(dispute) {
         })
         .eq('id', bill.id);
 
-      // Alert admin
-      console.error(`ALERT: Dispute created for bill ${bill.id}, amount: ${dispute.amount / 100}`);
+      logger.error('Escrow frozen due to dispute', {
+        requestId,
+        billId: bill.id,
+        amount: dispute.amount / 100
+      });
 
       // TODO: Send admin notification (email/Telegram)
     }
   } catch (error) {
-    console.error('Error handling dispute:', error);
+    logger.error('Error handling dispute', { requestId, error: error.message });
   }
 }
 
-async function handleRefund(charge) {
-  console.log('Refund processed:', charge.id);
+async function handleRefund(charge, requestId) {
+  logger.info('Refund processed', { requestId, chargeId: charge.id });
 
   try {
     const { data: bill } = await supabase
@@ -491,13 +669,13 @@ async function handleRefund(charge) {
         .eq('id', bill.id);
     }
   } catch (error) {
-    console.error('Error handling refund:', error);
+    logger.error('Error handling refund', { requestId, error: error.message });
   }
 }
 
-async function handleLightningPaymentSuccess(chargeId, data) {
+async function handleLightningPaymentSuccess(chargeId, data, requestId) {
   const billId = data.order_id;
-  console.log(`Lightning payment succeeded for bill ${billId}:`, chargeId);
+  logger.info('Lightning payment succeeded', { requestId, billId, chargeId });
 
   try {
     // Lightning payments are INSTANT and IRREVERSIBLE
@@ -513,7 +691,7 @@ async function handleLightningPaymentSuccess(chargeId, data) {
       .eq('id', billId);
 
     if (error) {
-      console.error('Failed to update bill status:', error);
+      logger.error('Failed to update bill status', { requestId, billId, error: error.message });
     }
 
     // Log the transaction
@@ -532,13 +710,13 @@ async function handleLightningPaymentSuccess(chargeId, data) {
     });
 
   } catch (error) {
-    console.error('Error processing lightning payment:', error);
+    logger.error('Error processing lightning payment', { requestId, billId, error: error.message });
   }
 }
 
-async function handleLightningPaymentFailure(chargeId, status, data) {
+async function handleLightningPaymentFailure(chargeId, status, data, requestId) {
   const billId = data.order_id;
-  console.log(`Lightning payment ${status} for bill ${billId}:`, chargeId);
+  logger.warn('Lightning payment failed', { requestId, billId, chargeId, status });
 
   try {
     await supabase
@@ -550,14 +728,48 @@ async function handleLightningPaymentFailure(chargeId, status, data) {
       .eq('id', billId);
 
   } catch (error) {
-    console.error('Error processing lightning payment failure:', error);
+    logger.error('Error processing lightning payment failure', { requestId, billId, error: error.message });
   }
 }
 
-// Start server
+// ==========================================
+// ERROR HANDLING MIDDLEWARE
+// ==========================================
+app.use((err, req, res, next) => {
+  logger.error('Unhandled error', {
+    requestId: req.id,
+    error: err.message,
+    stack: err.stack
+  });
+
+  res.status(500).json({
+    error: 'Internal server error',
+    requestId: req.id
+  });
+});
+
+// ==========================================
+// START SERVER
+// ==========================================
 app.listen(PORT, () => {
-  console.log(`BillHaven Backend Server running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Stripe webhook: POST /webhooks/stripe`);
-  console.log(`OpenNode webhook: POST /webhooks/opennode`);
+  logger.info('BillHaven Backend Server started', {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    nodeVersion: process.version
+  });
+  console.log(`\n🚀 BillHaven Backend Server running on port ${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`💳 Stripe webhook: POST /webhooks/stripe`);
+  console.log(`⚡ OpenNode webhook: POST /webhooks/opennode\n`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received: closing HTTP server');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT signal received: closing HTTP server');
+  process.exit(0);
 });
