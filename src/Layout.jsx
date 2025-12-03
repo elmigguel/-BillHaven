@@ -62,7 +62,7 @@ export default function Layout({ children }) {
   const visibleNavItems = NAV_ITEMS.filter(item => !item.auth || user)
 
   return (
-    <AnimatedBackground variant="subtle">
+    <AnimatedBackground variant="default">
       {/* Premium Header */}
       <nav className="sticky top-0 z-50 border-b border-white/5">
         {/* Glassmorphism background */}

@@ -1,31 +1,111 @@
 /**
- * AnimatedBackground - Premium animated dark background with depth
- * Creates that "looking deep into it" effect like Uniswap/Phantom
+ * AnimatedBackground - Premium deep space background with stars
+ * Creates immersive depth effect like Linear.app, Vercel, Stripe
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+
+// Generate random stars with consistent positions (seeded by index)
+const generateStars = (count, seed = 0) => {
+  const stars = [];
+  for (let i = 0; i < count; i++) {
+    const seedVal = (i + seed) * 9999;
+    stars.push({
+      id: i,
+      x: ((seedVal * 7) % 100),
+      y: ((seedVal * 13) % 100),
+      size: 0.5 + ((seedVal * 17) % 100) / 100 * 2,
+      opacity: 0.3 + ((seedVal * 23) % 100) / 100 * 0.7,
+      delay: ((seedVal * 31) % 100) / 100 * 5,
+      duration: 2 + ((seedVal * 37) % 100) / 100 * 4,
+    });
+  }
+  return stars;
+};
+
+// Star layer component with parallax
+const StarLayer = ({ stars, speed = 1, baseOpacity = 0.5, blur = 0 }) => (
+  <div
+    className="absolute inset-0 overflow-hidden"
+    style={{ filter: blur > 0 ? `blur(${blur}px)` : 'none' }}
+  >
+    {stars.map((star) => (
+      <motion.div
+        key={star.id}
+        className="absolute rounded-full bg-white"
+        style={{
+          left: `${star.x}%`,
+          top: `${star.y}%`,
+          width: star.size,
+          height: star.size,
+        }}
+        animate={{
+          opacity: [star.opacity * baseOpacity, star.opacity * baseOpacity * 0.3, star.opacity * baseOpacity],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{
+          duration: star.duration / speed,
+          repeat: Infinity,
+          delay: star.delay,
+          ease: 'easeInOut',
+        }}
+      />
+    ))}
+  </div>
+);
+
+// Shooting star component - positions passed as props to avoid re-render issues
+const ShootingStar = ({ delay = 0, startX = 50, startY = 15, repeatDelay = 10 }) => (
+  <motion.div
+    className="absolute w-[100px] h-[1px] bg-gradient-to-r from-transparent via-white to-transparent"
+    style={{
+      left: `${startX}%`,
+      top: `${startY}%`,
+      rotate: 45,
+    }}
+    initial={{ opacity: 0, x: -100, y: -100 }}
+    animate={{
+      opacity: [0, 1, 0],
+      x: [0, 200],
+      y: [0, 200],
+    }}
+    transition={{
+      duration: 1.5,
+      delay: delay,
+      repeat: Infinity,
+      repeatDelay: repeatDelay,
+      ease: 'easeOut',
+    }}
+  />
+);
 
 export default function AnimatedBackground({
   variant = 'default', // 'default' | 'subtle' | 'intense'
   children,
   className = '',
 }) {
+  // Generate star layers with memoization
+  const farStars = useMemo(() => generateStars(80, 1), []);
+  const midStars = useMemo(() => generateStars(50, 2), []);
+  const nearStars = useMemo(() => generateStars(30, 3), []);
+  const brightStars = useMemo(() => generateStars(15, 4), []);
+
   const variants = {
     subtle: {
-      blob1: { scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] },
-      blob2: { scale: [1.1, 1, 1.1], opacity: [0.08, 0.12, 0.08] },
-      blob3: { scale: [1, 1.15, 1], opacity: [0.05, 0.1, 0.05] },
+      starsOpacity: 0.4,
+      blobOpacity: 0.08,
+      nebulaOpacity: 0.05,
     },
     default: {
-      blob1: { scale: [1, 1.2, 1], opacity: [0.15, 0.25, 0.15] },
-      blob2: { scale: [1.2, 1, 1.2], opacity: [0.1, 0.18, 0.1] },
-      blob3: { scale: [1, 1.25, 1], opacity: [0.08, 0.15, 0.08] },
+      starsOpacity: 0.6,
+      blobOpacity: 0.12,
+      nebulaOpacity: 0.08,
     },
     intense: {
-      blob1: { scale: [1, 1.3, 1], opacity: [0.2, 0.35, 0.2] },
-      blob2: { scale: [1.3, 1, 1.3], opacity: [0.15, 0.25, 0.15] },
-      blob3: { scale: [1, 1.4, 1], opacity: [0.1, 0.2, 0.1] },
+      starsOpacity: 0.8,
+      blobOpacity: 0.18,
+      nebulaOpacity: 0.12,
     },
   };
 
@@ -33,92 +113,62 @@ export default function AnimatedBackground({
 
   return (
     <div className={`relative min-h-screen overflow-hidden ${className}`}>
-      {/* Base gradient */}
-      <div className="absolute inset-0 bg-dark-primary" />
-
-      {/* Noise texture overlay for depth */}
+      {/* Deep space gradient base */}
       <div
-        className="absolute inset-0 opacity-[0.015]"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-        }}
-      />
-
-      {/* Grid pattern for structure */}
-      <div
-        className="absolute inset-0 opacity-[0.02]"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          background: `
+            radial-gradient(ellipse at 50% 0%, rgba(17, 24, 39, 1) 0%, rgba(10, 11, 13, 1) 50%),
+            linear-gradient(180deg, rgba(10, 11, 13, 1) 0%, rgba(5, 5, 8, 1) 100%)
           `,
-          backgroundSize: '60px 60px',
         }}
       />
 
-      {/* Primary gradient blob - top left */}
+      {/* Distant nebula glow - purple/blue */}
       <motion.div
-        className="absolute -top-1/2 -left-1/2 w-full h-full"
+        className="absolute -top-1/3 -left-1/4 w-[120%] h-[80%]"
         style={{
-          background: 'radial-gradient(ellipse at center, rgba(0,82,255,0.3) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at 30% 20%, rgba(88, 28, 135, 0.15) 0%, transparent 60%)',
+          filter: 'blur(60px)',
         }}
         animate={{
-          x: [0, 100, 0],
-          y: [0, 50, 0],
-          ...config.blob1,
+          opacity: [config.nebulaOpacity, config.nebulaOpacity * 1.5, config.nebulaOpacity],
+          scale: [1, 1.1, 1],
         }}
         transition={{
           duration: 20,
           repeat: Infinity,
-          ease: 'linear',
+          ease: 'easeInOut',
         }}
       />
 
-      {/* Secondary gradient blob - center right */}
+      {/* Distant nebula glow - blue/cyan */}
       <motion.div
-        className="absolute -bottom-1/4 -right-1/4 w-3/4 h-3/4"
+        className="absolute top-1/3 -right-1/4 w-[80%] h-[60%]"
         style={{
-          background: 'radial-gradient(ellipse at center, rgba(127,132,246,0.25) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at 70% 50%, rgba(6, 78, 140, 0.12) 0%, transparent 55%)',
+          filter: 'blur(80px)',
         }}
         animate={{
-          x: [0, -80, 0],
-          y: [0, -60, 0],
-          ...config.blob2,
+          opacity: [config.nebulaOpacity * 0.8, config.nebulaOpacity * 1.2, config.nebulaOpacity * 0.8],
+          x: [0, 30, 0],
         }}
         transition={{
           duration: 25,
           repeat: Infinity,
-          ease: 'linear',
+          ease: 'easeInOut',
         }}
       />
 
-      {/* Accent blob - bottom left */}
+      {/* Emerald accent nebula */}
       <motion.div
-        className="absolute bottom-0 left-1/4 w-1/2 h-1/2"
+        className="absolute bottom-0 left-1/4 w-[60%] h-[40%]"
         style={{
-          background: 'radial-gradient(ellipse at center, rgba(16,185,129,0.2) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at 40% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%)',
+          filter: 'blur(100px)',
         }}
         animate={{
-          x: [0, 60, 0],
-          y: [0, -40, 0],
-          ...config.blob3,
-        }}
-        transition={{
-          duration: 18,
-          repeat: Infinity,
-          ease: 'linear',
-        }}
-      />
-
-      {/* Pink/magenta accent - top right */}
-      <motion.div
-        className="absolute top-1/4 right-1/4 w-96 h-96"
-        style={{
-          background: 'radial-gradient(circle at center, rgba(255,0,122,0.1) 0%, transparent 60%)',
-        }}
-        animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.08, 0.15, 0.08],
+          opacity: [config.nebulaOpacity * 0.5, config.nebulaOpacity, config.nebulaOpacity * 0.5],
         }}
         transition={{
           duration: 15,
@@ -127,28 +177,49 @@ export default function AnimatedBackground({
         }}
       />
 
-      {/* Cyan accent - center */}
-      <motion.div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px]"
+      {/* Star field layers with parallax depth */}
+      <div className="absolute inset-0" style={{ opacity: config.starsOpacity }}>
+        {/* Far stars - smallest, slowest, slightly blurred for depth */}
+        <StarLayer stars={farStars} speed={0.5} baseOpacity={0.4} blur={0.5} />
+
+        {/* Mid-distance stars */}
+        <StarLayer stars={midStars} speed={0.8} baseOpacity={0.6} blur={0} />
+
+        {/* Near stars - largest, fastest */}
+        <StarLayer stars={nearStars} speed={1.2} baseOpacity={0.8} blur={0} />
+
+        {/* Bright prominent stars */}
+        <StarLayer stars={brightStars} speed={0.6} baseOpacity={1} blur={0} />
+      </div>
+
+      {/* Shooting stars - fixed positions to prevent re-render jitter */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <ShootingStar delay={2} startX={35} startY={10} repeatDelay={12} />
+        <ShootingStar delay={8} startX={65} startY={20} repeatDelay={18} />
+        <ShootingStar delay={15} startX={45} startY={5} repeatDelay={15} />
+      </div>
+
+      {/* Subtle noise texture for film grain effect */}
+      <div
+        className="absolute inset-0 opacity-[0.025] pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at center, rgba(0,212,255,0.08) 0%, transparent 60%)',
-        }}
-        animate={{
-          scale: [1, 1.2, 1],
-          rotate: [0, 180, 360],
-        }}
-        transition={{
-          duration: 30,
-          repeat: Infinity,
-          ease: 'linear',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
       />
 
-      {/* Vignette effect for depth */}
+      {/* Central glow - focus point */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle at center, rgba(59, 130, 246, 0.03) 0%, transparent 50%)',
+        }}
+      />
+
+      {/* Vignette for depth */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 30%, rgba(10,11,13,0.4) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.4) 100%)',
         }}
       />
 
@@ -190,28 +261,69 @@ export function AnimatedMesh({ className = '' }) {
 
 // Floating particles effect
 export function FloatingParticles({ count = 20 }) {
+  const particles = useMemo(() => {
+    return [...Array(count)].map((_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      duration: 5 + Math.random() * 5,
+      delay: Math.random() * 5,
+    }));
+  }, [count]);
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {[...Array(count)].map((_, i) => (
+      {particles.map((p) => (
         <motion.div
-          key={i}
+          key={p.id}
           className="absolute w-1 h-1 bg-white/20 rounded-full"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: `${p.x}%`,
+            top: `${p.y}%`,
           }}
           animate={{
             y: [0, -100, 0],
             opacity: [0, 1, 0],
           }}
           transition={{
-            duration: 5 + Math.random() * 5,
+            duration: p.duration,
             repeat: Infinity,
-            delay: Math.random() * 5,
+            delay: p.delay,
             ease: 'easeInOut',
           }}
         />
       ))}
     </div>
+  );
+}
+
+// Glowing orb for special sections
+export function GlowingOrb({ color = 'blue', size = 400, className = '' }) {
+  const colors = {
+    blue: 'rgba(59, 130, 246, 0.15)',
+    purple: 'rgba(139, 92, 246, 0.15)',
+    emerald: 'rgba(16, 185, 129, 0.12)',
+    cyan: 'rgba(6, 182, 212, 0.12)',
+  };
+
+  return (
+    <motion.div
+      className={`absolute rounded-full pointer-events-none ${className}`}
+      style={{
+        width: size,
+        height: size,
+        background: `radial-gradient(circle at center, ${colors[color]} 0%, transparent 70%)`,
+        filter: 'blur(40px)',
+      }}
+      animate={{
+        scale: [1, 1.2, 1],
+        opacity: [0.8, 1, 0.8],
+      }}
+      transition={{
+        duration: 8,
+        repeat: Infinity,
+        ease: 'easeInOut',
+      }}
+    />
   );
 }
