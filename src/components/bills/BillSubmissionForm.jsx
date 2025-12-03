@@ -1,11 +1,14 @@
 import React, { useState, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Send, Loader2, Wallet, AlertCircle, CheckCircle, ExternalLink, Coins, Diamond } from 'lucide-react';
+import PaymentMethodSelector from "@/components/ui/PaymentMethodSelector";
+import ChainSelector, { ChainLogos, CHAINS } from "@/components/ui/ChainSelector";
+import { Upload, Send, Loader2, Wallet, AlertCircle, CheckCircle, ExternalLink, Coins, Diamond, Sparkles } from 'lucide-react';
 import { billsApi } from '../../api/billsApi';
 import { storageApi } from '../../api/storageApi';
 import { calculateFee, FeeBreakdown } from './FeeCalculator';
@@ -308,11 +311,16 @@ export default function BillSubmissionForm({ onSuccess }) {
   const fee = formData.amount ? escrowService.calculateFee(formData.amount) : null;
 
   return (
-    <Card className="border-2 border-gray-700 shadow-xl bg-gray-800">
-      <CardHeader className="bg-gradient-to-br from-purple-950 to-gray-900 border-b border-gray-700">
-        <CardTitle className="text-2xl text-gray-100">Submit New Bill</CardTitle>
-        <p className="text-sm text-gray-400 mt-1">
-          Lock your crypto in escrow and receive fiat payment
+    <Card className="border border-dark-border shadow-2xl bg-dark-card/80 backdrop-blur-xl rounded-2xl overflow-hidden">
+      <CardHeader className="bg-gradient-to-br from-brand-purple/10 via-dark-card to-dark-card border-b border-dark-border p-6">
+        <CardTitle className="text-2xl font-bold text-white flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple">
+            <Send className="w-6 h-6 text-white" />
+          </div>
+          Submit New Bill
+        </CardTitle>
+        <p className="text-sm text-gray-400 mt-2 ml-14">
+          Lock your crypto in escrow and receive fiat payment from bill payers
         </p>
       </CardHeader>
       <CardContent className="pt-6">
@@ -469,39 +477,73 @@ export default function BillSubmissionForm({ onSuccess }) {
             />
           </div>
 
-          {/* Payment Instructions */}
-          <div className="p-4 bg-emerald-950 rounded-lg border border-emerald-800 space-y-4">
-            <h4 className="font-semibold text-emerald-300 flex items-center gap-2">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
-              </svg>
+          {/* Payment Instructions - Premium Card Selection */}
+          <motion.div
+            className="p-5 rounded-2xl border border-success-muted/30 bg-gradient-to-br from-success-muted/5 to-transparent"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <h4 className="font-semibold text-white flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-success-muted/20">
+                <Sparkles className="w-5 h-5 text-success-muted" />
+              </div>
               How should the payer pay your bill?
             </h4>
-            <div className="space-y-2">
-              <Label htmlFor="payment_instructions" className="text-gray-300">Payment Instructions *</Label>
-              <Textarea
-                id="payment_instructions"
-                placeholder="e.g.: IBAN NL12ABCD0123456789 in name of John Doe&#10;Or: PayPal: john@email.com&#10;Or: Revolut: @johndoe"
-                value={formData.payment_instructions}
-                onChange={(e) => setFormData({ ...formData, payment_instructions: e.target.value })}
-                rows={3}
-                required
-                className="bg-gray-900 border-gray-600 text-gray-100"
-              />
-              <p className="text-xs text-emerald-400">
-                The payer will see this and pay your bill using this method
-              </p>
-            </div>
-          </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Select your preferred payment method. The payer will use this to send you fiat payment.
+            </p>
+            <PaymentMethodSelector
+              value={formData.payment_instructions}
+              onChange={(value) => setFormData({ ...formData, payment_instructions: value })}
+            />
+          </motion.div>
 
-          {/* TON Address (Optional) - For receiving TON payments */}
-          <div className="p-4 bg-sky-950 rounded-lg border border-sky-800 space-y-3">
-            <h4 className="font-semibold text-sky-300 flex items-center gap-2">
-              <Diamond className="w-5 h-5" />
-              Accept TON Payments (Optional)
+          {/* Multi-Chain Crypto Receiving - All Networks */}
+          <motion.div
+            className="p-5 rounded-2xl border border-brand-purple/30 bg-gradient-to-br from-brand-purple/5 to-transparent"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h4 className="font-semibold text-white flex items-center gap-2 mb-2">
+              <div className="p-2 rounded-lg bg-brand-purple/20">
+                <Coins className="w-5 h-5 text-brand-purple" />
+              </div>
+              Receive Crypto Payments
             </h4>
-            <div className="space-y-2">
-              <Label htmlFor="maker_ton_address" className="text-gray-300">Your TON Wallet Address</Label>
+            <p className="text-sm text-gray-400 mb-4">
+              Your connected EVM wallet will receive payments. Add optional addresses for other networks.
+            </p>
+
+            {/* Supported Networks Display */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+              {['ethereum', 'polygon', 'arbitrum', 'base', 'optimism', 'bsc'].map((chain) => {
+                const Logo = ChainLogos[chain];
+                const chainData = CHAINS[chain];
+                return (
+                  <div
+                    key={chain}
+                    className="flex flex-col items-center gap-1 p-2 rounded-lg bg-dark-card/50 border border-dark-border hover:border-brand-purple/30 transition-colors"
+                  >
+                    <div className="w-8 h-8">
+                      {Logo && <Logo />}
+                    </div>
+                    <span className="text-[10px] text-gray-400 text-center">{chainData?.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* TON Address (Optional) */}
+            <div className="p-4 rounded-xl bg-dark-card/50 border border-dark-border space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6">
+                  {ChainLogos.ton && <ChainLogos.ton />}
+                </div>
+                <span className="font-medium text-white text-sm">TON Network (Optional)</span>
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-success-muted/20 text-success-muted rounded">ULTRA LOW FEE</span>
+              </div>
               <Input
                 id="maker_ton_address"
                 placeholder="EQ... or UQ... (your TON address)"
@@ -510,16 +552,34 @@ export default function BillSubmissionForm({ onSuccess }) {
                   setFormData({ ...formData, maker_ton_address: e.target.value });
                   validateField('maker_ton_address', e.target.value);
                 }}
-                className={`bg-gray-900 border-gray-600 text-gray-100 font-mono ${validationErrors.maker_ton_address ? 'border-red-500' : ''}`}
+                className={`bg-dark-primary border-dark-border text-white font-mono text-sm ${validationErrors.maker_ton_address ? 'border-red-500' : ''}`}
               />
               {validationErrors.maker_ton_address && (
                 <p className="text-xs text-red-400">{validationErrors.maker_ton_address}</p>
               )}
-              <p className="text-xs text-sky-400">
-                Add your TON address to accept ultra-low fee payments (~$0.025/tx). Payers can then choose between EVM or TON.
+              <p className="text-xs text-gray-500">
+                ~$0.025 per transaction • 5 second finality
               </p>
             </div>
-          </div>
+
+            {/* Other Networks Info */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['solana', 'bitcoin', 'lightning'].map((chain) => {
+                const Logo = ChainLogos[chain];
+                return (
+                  <div
+                    key={chain}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-dark-card/30 border border-dark-border text-xs text-gray-500"
+                  >
+                    <div className="w-4 h-4">
+                      {Logo && <Logo />}
+                    </div>
+                    <span>Coming soon</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
 
           {/* Fee & Escrow Info */}
           {fee && (
@@ -576,28 +636,33 @@ export default function BillSubmissionForm({ onSuccess }) {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 h-12 text-base shadow-lg"
-            disabled={isSubmitting || !isConnected || !isCorrectNetwork()}
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                {uploadProgress || 'Submitting...'}
-              </>
-            ) : !isConnected ? (
-              <>
-                <Wallet className="w-5 h-5 mr-2" />
-                Connect Wallet to Submit
-              </>
-            ) : (
-              <>
-                <Send className="w-5 h-5 mr-2" />
-                Create Bill & Lock Escrow
-              </>
-            )}
-          </Button>
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-brand-blue via-brand-purple to-brand-purple hover:from-brand-blue/90 hover:to-brand-purple/90 h-14 text-base font-semibold shadow-xl shadow-brand-purple/20 rounded-xl"
+              disabled={isSubmitting || !isConnected || !isCorrectNetwork()}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  {uploadProgress || 'Processing...'}
+                </>
+              ) : !isConnected ? (
+                <>
+                  <Wallet className="w-5 h-5 mr-2" />
+                  Connect Wallet to Submit
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5 mr-2" />
+                  Create Bill & Lock Escrow
+                </>
+              )}
+            </Button>
+          </motion.div>
         </form>
       </CardContent>
     </Card>

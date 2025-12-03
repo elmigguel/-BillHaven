@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import EnhancedHero from '@/components/sections/EnhancedHero';
 import TrustIndicators from '@/components/trust/TrustIndicators';
+import { ChainLogos } from '@/components/ui/ChainSelector';
+import BillHavenLogo from '@/components/ui/BillHavenLogo';
 import {
   Receipt,
   Wallet,
@@ -18,7 +20,13 @@ import {
   CheckCircle2,
   CreditCard,
   Bitcoin,
-  Coins
+  Coins,
+  X,
+  Check,
+  TrendingUp,
+  Clock,
+  Lock,
+  Sparkles
 } from 'lucide-react';
 
 // Animation variants for consistent animations
@@ -279,6 +287,260 @@ export default function Home() {
             </motion.div>
           ))}
         </motion.div>
+      </div>
+
+      {/* Platform Comparison Section */}
+      <div className="py-20 sm:py-24 bg-dark-secondary/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="text-center mb-12 sm:mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Why BillHaven is Different
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+              Compare us to traditional methods and see why crypto-native users choose BillHaven
+            </p>
+          </motion.div>
+
+          {/* Comparison Table */}
+          <motion.div
+            className="overflow-x-auto"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="min-w-[700px]">
+              {/* Header */}
+              <div className="grid grid-cols-4 gap-4 mb-4">
+                <div className="p-4"></div>
+                <div className="p-4 rounded-t-2xl bg-gradient-to-b from-brand-purple/20 to-transparent border border-brand-purple/30 border-b-0 text-center">
+                  <BillHavenLogo size="sm" showText={false} className="justify-center mb-2" />
+                  <span className="font-bold text-white">BillHaven</span>
+                </div>
+                <div className="p-4 text-center">
+                  <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-gray-700 flex items-center justify-center text-gray-400">P2P</div>
+                  <span className="font-medium text-gray-400">LocalBitcoins</span>
+                </div>
+                <div className="p-4 text-center">
+                  <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-gray-700 flex items-center justify-center text-gray-400">🏦</div>
+                  <span className="font-medium text-gray-400">Traditional</span>
+                </div>
+              </div>
+
+              {/* Rows */}
+              {[
+                { feature: 'Smart Contract Escrow', billhaven: true, p2p: false, traditional: false },
+                { feature: 'Multi-Chain Support', billhaven: '11 Networks', p2p: '2-3 Networks', traditional: false },
+                { feature: 'Platform Fees', billhaven: '0.8-2%', p2p: '1-5%', traditional: '3-5%' },
+                { feature: 'Settlement Time', billhaven: 'Instant', p2p: '15-60 min', traditional: '1-3 days' },
+                { feature: 'No KYC Required', billhaven: true, p2p: false, traditional: false },
+                { feature: 'Audited Security', billhaven: true, p2p: false, traditional: true },
+                { feature: 'Dispute Resolution', billhaven: 'Automated', p2p: 'Manual', traditional: 'Manual' },
+              ].map((row, index) => (
+                <motion.div
+                  key={row.feature}
+                  className="grid grid-cols-4 gap-4 border-t border-dark-border"
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <div className="p-4 text-gray-300 font-medium flex items-center">
+                    {row.feature}
+                  </div>
+                  <div className="p-4 bg-brand-purple/5 border-x border-brand-purple/30 flex items-center justify-center">
+                    {typeof row.billhaven === 'boolean' ? (
+                      row.billhaven ? (
+                        <Check className="w-5 h-5 text-success-muted" />
+                      ) : (
+                        <X className="w-5 h-5 text-gray-600" />
+                      )
+                    ) : (
+                      <span className="text-success-muted font-semibold">{row.billhaven}</span>
+                    )}
+                  </div>
+                  <div className="p-4 flex items-center justify-center">
+                    {typeof row.p2p === 'boolean' ? (
+                      row.p2p ? (
+                        <Check className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <X className="w-5 h-5 text-gray-600" />
+                      )
+                    ) : (
+                      <span className="text-gray-400">{row.p2p}</span>
+                    )}
+                  </div>
+                  <div className="p-4 flex items-center justify-center">
+                    {typeof row.traditional === 'boolean' ? (
+                      row.traditional ? (
+                        <Check className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <X className="w-5 h-5 text-gray-600" />
+                      )
+                    ) : (
+                      <span className="text-gray-400">{row.traditional}</span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Supported Chains Section */}
+      <div className="py-16 sm:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="text-center mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+              Supported Blockchains
+            </h3>
+            <p className="text-gray-400">
+              Trade across 11 networks with real-time settlements
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            {['ethereum', 'polygon', 'arbitrum', 'optimism', 'base', 'bsc', 'avalanche', 'solana', 'ton', 'bitcoin', 'lightning'].map((chain, index) => {
+              const Logo = ChainLogos[chain];
+              return (
+                <motion.div
+                  key={chain}
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl bg-dark-card/50 border border-dark-border hover:border-brand-purple/30 transition-all duration-300 group"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -4 }}
+                >
+                  <div className="w-10 h-10 group-hover:scale-110 transition-transform">
+                    {Logo && <Logo />}
+                  </div>
+                  <span className="text-xs text-gray-400 capitalize">{chain === 'bsc' ? 'BSC' : chain}</span>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+      </div>
+
+      {/* About BillHaven Section */}
+      <div className="py-20 sm:py-24 bg-gradient-to-b from-dark-secondary/50 to-transparent">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
+                The Future of P2P<br />
+                <span className="bg-gradient-to-r from-brand-blue to-brand-purple bg-clip-text text-transparent">
+                  Bill Payments
+                </span>
+              </h2>
+              <p className="text-gray-400 text-lg mb-6 leading-relaxed">
+                BillHaven bridges the gap between traditional finance and cryptocurrency. Our platform enables anyone to earn crypto by simply paying other people's bills - creating a win-win marketplace.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: Lock, text: 'Non-custodial escrow - you control your funds' },
+                  { icon: Sparkles, text: 'OpenZeppelin audited smart contracts' },
+                  { icon: TrendingUp, text: 'Volume-based fee tiers from 0.8%' },
+                  { icon: Clock, text: 'Instant settlements on confirmation' },
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.text}
+                    className="flex items-center gap-3"
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <div className="p-2 rounded-lg bg-brand-purple/10">
+                      <item.icon className="w-5 h-5 text-brand-purple" />
+                    </div>
+                    <span className="text-gray-300">{item.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="relative p-8 rounded-2xl bg-dark-card border border-dark-border overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/5 via-brand-purple/5 to-transparent" />
+                <div className="absolute top-0 right-0 w-40 h-40 bg-brand-purple/10 rounded-full blur-3xl" />
+
+                <div className="relative space-y-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Contract Status</span>
+                    <span className="px-3 py-1 rounded-full bg-success-muted/10 text-success-muted text-sm font-medium">
+                      Verified ✓
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Network</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5">
+                          {ChainLogos.polygon && <ChainLogos.polygon />}
+                        </div>
+                        <span className="text-white">Polygon Mainnet</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Security</span>
+                      <span className="text-white">OpenZeppelin</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Test Coverage</span>
+                      <span className="text-success-muted">60/60 Passing</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Total Chains</span>
+                      <span className="text-white">11 Networks</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href="https://polygonscan.com/address/0x8beED27aA6d28FE42a9e792d81046DD1337a8240"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full py-3 text-center rounded-xl bg-brand-purple/10 border border-brand-purple/30 text-brand-purple font-medium hover:bg-brand-purple/20 transition-colors"
+                  >
+                    View on PolygonScan →
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
       </div>
 
       {/* CTA Section */}
