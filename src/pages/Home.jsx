@@ -141,7 +141,7 @@ export default function Home() {
             How It Works
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-            A simple three-step process to earn crypto by paying bills
+            A simple three-step process to exchange fiat for crypto securely
           </p>
         </motion.div>
 
@@ -458,7 +458,7 @@ export default function Home() {
                 </span>
               </h2>
               <p className="text-gray-400 text-lg mb-6 leading-relaxed">
-                BillHaven bridges the gap between traditional finance and cryptocurrency. Our platform enables anyone to earn crypto by simply paying other people's bills - creating a win-win marketplace.
+                BillHaven bridges the gap between traditional finance and cryptocurrency. Pay fiat for someone's bill and receive crypto directly to your wallet - secured by smart contract escrow.
               </p>
               <div className="space-y-4">
                 {[
@@ -556,11 +556,11 @@ export default function Home() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
-              Ready to Start Earning?
+              Ready to Get Started?
             </h2>
             <p className="text-gray-400 mb-10 text-lg max-w-2xl mx-auto">
-              Join thousands of users already earning cryptocurrency by paying bills.
-              Get started in minutes.
+              Convert your fiat to crypto securely. Pay bills for others and receive cryptocurrency
+              directly to your wallet through our protected escrow system.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -579,7 +579,7 @@ export default function Home() {
                   </Button>
                 </motion.div>
               </Link>
-              <Link to={createPageUrl('FeeStructure')}>
+              <Link to={createPageUrl('SubmitBill')}>
                 <motion.div
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
@@ -590,7 +590,7 @@ export default function Home() {
                     variant="outline"
                     className="w-full sm:w-auto border-2 border-white/20 bg-white/5 backdrop-blur-xl text-white hover:bg-white/10 hover:border-white/30 text-lg px-10 py-7 rounded-xl shadow-lg transition-all duration-300 font-medium"
                   >
-                    View Fee Structure
+                    Submit Your Bill
                   </Button>
                 </motion.div>
               </Link>
@@ -632,6 +632,12 @@ export default function Home() {
               </Link>
               <Link to={createPageUrl('Referral')} className="text-sm text-gray-400 hover:text-white transition-colors">
                 Referral Program
+              </Link>
+              <Link to="/support" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                24/7 Support
               </Link>
             </div>
           </div>

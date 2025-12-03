@@ -20,6 +20,7 @@ import PublicBills from './pages/PublicBills';
 import Settings from './pages/Settings';
 import DisputeAdmin from './pages/DisputeAdmin';
 import Referral from './pages/Referral';
+import Support from './pages/Support';
 
 // Mock createPageUrl function
 const pageUrlMap = {
@@ -35,6 +36,7 @@ const pageUrlMap = {
   Settings: '/settings',
   DisputeAdmin: '/dispute-admin',
   Referral: '/referral',
+  Support: '/support',
 };
 
 window.createPageUrl = (pageName) => pageUrlMap[pageName] || '/';
@@ -116,6 +118,12 @@ function AnimatedRoutes() {
               <Layout><Referral /></Layout>
             </ProtectedRoute>
           }
+        />
+
+        {/* Public support page */}
+        <Route
+          path="/support"
+          element={<Layout><Support /></Layout>}
         />
       </Routes>
     </AnimatePresence>

@@ -48,7 +48,8 @@
       "WebFetch(domain:billhaven-8c40tay2x-mikes-projects-f9ae2848.vercel.app)",
       "Bash(vercel ls:*)",
       "Bash(curl:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

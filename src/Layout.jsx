@@ -16,7 +16,6 @@ import {
   LogOut,
   Globe,
   ChevronDown,
-  Home,
   LayoutDashboard,
   FileText,
   Send,
@@ -35,10 +34,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import InstallPrompt from './components/pwa/InstallPrompt'
 import ConnectWalletButton from './components/wallet/ConnectWalletButton'
+import ChatBot from './components/support/ChatBot'
 
-// Navigation items
+// Navigation items - Home button removed (logo links to home)
 const NAV_ITEMS = [
-  { name: 'Home', path: 'Home', icon: Home },
   { name: 'Dashboard', path: 'Dashboard', icon: LayoutDashboard, auth: true },
   { name: 'Public Bills', path: 'PublicBills', icon: Globe },
   { name: 'Submit Bill', path: 'SubmitBill', icon: Send, auth: true },
@@ -259,6 +258,9 @@ export default function Layout({ children }) {
 
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* Floating Chat Support Bot */}
+      <ChatBot />
     </AnimatedBackground>
   )
 }

@@ -13,6 +13,7 @@ const pageUrlMap = {
   Settings: '/settings',
   DisputeAdmin: '/dispute-admin',
   Referral: '/referral',
+  Support: '/support',
   Login: '/login',
   Signup: '/signup',
 };
