@@ -22,31 +22,34 @@ import {
 import { Badge } from '../ui/badge'
 import { Wallet, Copy, ExternalLink, LogOut, AlertCircle, Check, ChevronDown } from 'lucide-react'
 
+import ChainLogo from './ChainLogo';
+
 // EVM Networks - Multi-chain support
 const EVM_NETWORKS = {
   // ============ MAINNETS ============
-  137: { name: 'Polygon', shortName: 'MATIC', color: 'bg-purple-500', type: 'mainnet', icon: '🟣' },
-  1: { name: 'Ethereum', shortName: 'ETH', color: 'bg-blue-600', type: 'mainnet', icon: '⟠' },
-  56: { name: 'BNB Chain', shortName: 'BNB', color: 'bg-yellow-500', type: 'mainnet', icon: '🟡' },
-  42161: { name: 'Arbitrum', shortName: 'ARB', color: 'bg-blue-400', type: 'mainnet', icon: '🔵' },
-  10: { name: 'Optimism', shortName: 'OP', color: 'bg-red-500', type: 'mainnet', icon: '🔴' },
-  8453: { name: 'Base', shortName: 'BASE', color: 'bg-blue-500', type: 'mainnet', icon: '🔷' },
+  137: { name: 'Polygon', shortName: 'MATIC', color: 'bg-purple-500', type: 'mainnet' },
+  1: { name: 'Ethereum', shortName: 'ETH', color: 'bg-blue-600', type: 'mainnet' },
+  56: { name: 'BNB Chain', shortName: 'BNB', color: 'bg-yellow-500', type: 'mainnet' },
+  42161: { name: 'Arbitrum', shortName: 'ARB', color: 'bg-blue-400', type: 'mainnet' },
+  10: { name: 'Optimism', shortName: 'OP', color: 'bg-red-500', type: 'mainnet' },
+  8453: { name: 'Base', shortName: 'BASE', color: 'bg-blue-500', type: 'mainnet' },
   // ============ TESTNETS ============
-  80002: { name: 'Polygon Amoy', shortName: 'Amoy', color: 'bg-purple-400', type: 'testnet', icon: '🟣' },
-  11155111: { name: 'Sepolia', shortName: 'SEP', color: 'bg-blue-400', type: 'testnet', icon: '⟠' },
-  97: { name: 'BSC Testnet', shortName: 'tBNB', color: 'bg-yellow-400', type: 'testnet', icon: '🟡' },
-  421614: { name: 'Arbitrum Sepolia', shortName: 'tARB', color: 'bg-blue-300', type: 'testnet', icon: '🔵' },
-  84532: { name: 'Base Sepolia', shortName: 'tBASE', color: 'bg-blue-300', type: 'testnet', icon: '🔷' },
+  80002: { name: 'Polygon Amoy', shortName: 'Amoy', color: 'bg-purple-400', type: 'testnet' },
+  11155111: { name: 'Sepolia', shortName: 'SEP', color: 'bg-blue-400', type: 'testnet' },
+  97: { name: 'BSC Testnet', shortName: 'tBNB', color: 'bg-yellow-400', type: 'testnet' },
+  421614: { name: 'Arbitrum Sepolia', shortName: 'tARB', color: 'bg-blue-300', type: 'testnet' },
+  84532: { name: 'Base Sepolia', shortName: 'tBASE', color: 'bg-blue-300', type: 'testnet' },
 }
 
 // TON Networks
 const TON_NETWORKS = {
-  'ton-mainnet': { name: 'TON', shortName: 'TON', color: 'bg-sky-500', type: 'mainnet', icon: '💎' },
-  'ton-testnet': { name: 'TON Testnet', shortName: 'tTON', color: 'bg-sky-400', type: 'testnet', icon: '💎' },
+  'ton-mainnet': { name: 'TON', shortName: 'TON', color: 'bg-sky-500', type: 'mainnet' },
+  'ton-testnet': { name: 'TON Testnet', shortName: 'tTON', color: 'bg-sky-400', type: 'testnet' },
 }
 
 // Combined supported networks
 const SUPPORTED_NETWORKS = { ...EVM_NETWORKS, ...TON_NETWORKS }
+
 
 // Separate mainnets and testnets for UI
 const MAINNET_CHAINS = [137, 1, 56, 42161, 10, 8453]
@@ -127,19 +130,22 @@ export default function ConnectWalletButton() {
         {/* Blockchain Type Selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              {blockchainType === 'ton' ? '💎 TON' : '⟠ EVM'}
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              {blockchainType === 'ton' ? <ChainLogo chainId="ton-mainnet" /> : <ChainLogo chainId="evm" />}
+              <span>{blockchainType === 'ton' ? 'TON' : 'EVM'}</span>
               <ChevronDown className="w-3 h-3 ml-1" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setBlockchainType('evm')}>
-              ⟠ EVM Chains (ETH, Polygon, BSC...)
-              {blockchainType === 'evm' && <Check className="w-4 h-4 ml-2" />}
+            <DropdownMenuItem onClick={() => setBlockchainType('evm')} className="flex items-center gap-2">
+              <ChainLogo chainId="evm" />
+              EVM Chains (ETH, Polygon, BSC...)
+              {blockchainType === 'evm' && <Check className="w-4 h-4 ml-auto" />}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setBlockchainType('ton')}>
-              💎 TON Network
-              {blockchainType === 'ton' && <Check className="w-4 h-4 ml-2" />}
+            <DropdownMenuItem onClick={() => setBlockchainType('ton')} className="flex items-center gap-2">
+              <ChainLogo chainId="ton-mainnet" />
+              TON Network
+              {blockchainType === 'ton' && <Check className="w-4 h-4 ml-auto" />}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -172,18 +178,20 @@ export default function ConnectWalletButton() {
       {/* Blockchain Type Badge */}
       <Badge
         variant="outline"
-        className={`${blockchainType === 'ton' ? 'bg-sky-500' : 'bg-gray-500'} text-white border-0 text-xs cursor-pointer`}
+        className="flex items-center gap-1.5 pl-2 pr-2.5 py-1 text-white border-0 text-xs cursor-pointer"
         onClick={() => setBlockchainType(blockchainType === 'ton' ? 'evm' : 'ton')}
       >
-        {blockchainType === 'ton' ? '💎 TON' : '⟠ EVM'}
+        {blockchainType === 'ton' ? <ChainLogo chainId="ton-mainnet" /> : <ChainLogo chainId="evm" />}
+        <span>{blockchainType === 'ton' ? 'TON' : 'EVM'}</span>
       </Badge>
 
       {/* Network Badge */}
       {currentNetwork && (
         <Badge
           variant="outline"
-          className={`${currentNetwork.color} text-white border-0 text-xs`}
+          className={`${currentNetwork.color} text-white border-0 text-xs flex items-center gap-1.5`}
         >
+          <ChainLogo chainId={chainId || (tonNetwork === 'testnet' ? 'ton-testnet' : 'ton-mainnet')} />
           {currentNetwork.shortName}
           {currentNetwork.type === 'testnet' && ' (Test)'}
         </Badge>
@@ -270,9 +278,9 @@ export default function ConnectWalletButton() {
               <DropdownMenuItem
                 key={netId}
                 onClick={() => switchNetwork(netId)}
-                className={`cursor-pointer ${chainId === netId ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
+                className={`cursor-pointer flex items-center gap-2 ${chainId === netId ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
               >
-                <span className="mr-2">{network.icon}</span>
+                <ChainLogo chainId={netId} />
                 {network.name}
                 {chainId === netId && <Check className="w-4 h-4 ml-auto text-green-500" />}
               </DropdownMenuItem>
@@ -292,9 +300,9 @@ export default function ConnectWalletButton() {
               <DropdownMenuItem
                 key={netId}
                 onClick={() => switchNetwork(netId)}
-                className={`cursor-pointer ${chainId === netId ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
+                className={`cursor-pointer flex items-center gap-2 ${chainId === netId ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
               >
-                <span className="mr-2">{network.icon}</span>
+                <ChainLogo chainId={netId} />
                 {network.name}
                 {chainId === netId && <Check className="w-4 h-4 ml-auto text-green-500" />}
               </DropdownMenuItem>

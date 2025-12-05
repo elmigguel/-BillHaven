@@ -1021,23 +1021,52 @@ contract BillHavenEscrowV3 is ReentrancyGuard, Pausable, AccessControl {
     }
 
     /**
-     * @notice Emergency withdraw native tokens (only when paused)
+     * @notice Rescue stuck native funds (excess only, not active escrows)
+     * @dev Calculates total locked in active bills and only allows withdrawal of excess
      */
-    function emergencyWithdraw() external onlyRole(ADMIN_ROLE) whenPaused {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No balance");
-        (bool success, ) = payable(msg.sender).call{value: balance}("");
-        require(success, "Withdraw failed");
+    function rescueStuckFunds() external onlyRole(ADMIN_ROLE) whenPaused {
+        // Calculate total locked in active bills
+        uint256 totalLocked = 0;
+        for (uint256 i = 1; i <= billCounter; i++) {
+            Bill storage bill = bills[i];
+            if (bill.token == address(0) &&
+                bill.status != ConfirmationStatus.RELEASED &&
+                bill.status != ConfirmationStatus.REFUNDED &&
+                bill.status != ConfirmationStatus.CANCELLED) {
+                totalLocked += bill.amount + bill.platformFee;
+            }
+        }
+
+        uint256 available = address(this).balance - totalLocked;
+        require(available > 0, "No excess funds");
+
+        // Send to feeWallet (safer than msg.sender)
+        (bool success, ) = payable(feeWallet).call{value: available}("");
+        require(success, "Rescue failed");
     }
 
     /**
-     * @notice Emergency withdraw ERC20 tokens (only when paused)
+     * @notice Rescue stuck ERC20 tokens (excess only)
      */
-    function emergencyWithdrawToken(address _token) external onlyRole(ADMIN_ROLE) whenPaused {
+    function rescueStuckTokens(address _token) external onlyRole(ADMIN_ROLE) whenPaused {
         if (_token == address(0)) revert InvalidAddress();
-        uint256 balance = IERC20(_token).balanceOf(address(this));
-        require(balance > 0, "No token balance");
-        IERC20(_token).safeTransfer(msg.sender, balance);
+
+        uint256 totalLocked = 0;
+        for (uint256 i = 1; i <= billCounter; i++) {
+            Bill storage bill = bills[i];
+            if (bill.token == _token &&
+                bill.status != ConfirmationStatus.RELEASED &&
+                bill.status != ConfirmationStatus.REFUNDED &&
+                bill.status != ConfirmationStatus.CANCELLED) {
+                totalLocked += bill.amount + bill.platformFee;
+            }
+        }
+
+        uint256 contractBalance = IERC20(_token).balanceOf(address(this));
+        uint256 available = contractBalance - totalLocked;
+        require(available > 0, "No excess tokens");
+
+        IERC20(_token).safeTransfer(feeWallet, available);
     }
 
     // Receive function to accept ETH/MATIC
