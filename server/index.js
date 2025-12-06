@@ -12,6 +12,10 @@ import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { ethers } from 'ethers';
 
+// Load environment variables FIRST (before any config)
+dotenv.config({ path: '../.env' }); // Local development
+dotenv.config(); // Default
+
 // ===========================================
 // V4 ORACLE CONFIGURATION
 // ===========================================
@@ -63,10 +67,7 @@ function rateLimit(req, res, next) {
   next();
 }
 
-// Load environment variables
-// Try multiple paths for different deployment environments
-dotenv.config({ path: '../.env' }); // Local development
-dotenv.config(); // Default (checks .env in current directory and parent directories)
+// Environment variables loaded at top of file
 
 // ==========================================
 // CRITICAL: Environment Variable Validation

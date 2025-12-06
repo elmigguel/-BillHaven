@@ -61,3 +61,4 @@ ehthumbs.db
 # pnpm-lock.yaml
 .vercel
 .env*.local
+WALLETS_SECURE.json
