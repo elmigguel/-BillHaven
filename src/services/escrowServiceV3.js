@@ -629,9 +629,17 @@ export const escrowServiceV3 = {
 
   /**
    * Generate unique payment reference
+   * SECURITY: Uses crypto.getRandomValues() instead of Math.random()
    */
   generatePaymentReference(billId, timestamp = Date.now()) {
-    return `BH-${billId}-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+    // Generate cryptographically secure random bytes
+    const array = new Uint8Array(12);
+    crypto.getRandomValues(array);
+    const randomPart = Array.from(array)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .substring(0, 16);
+    return `BH-${billId}-${timestamp}-${randomPart}`;
   },
 
   /**

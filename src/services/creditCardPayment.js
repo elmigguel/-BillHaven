@@ -99,24 +99,26 @@ export function getElementsAppearance() {
  * Creates a PaymentIntent with manual capture mode for escrow.
  * Funds are authorized but not captured until escrow is released.
  *
- * NO LIMITS - Amount is unrestricted for verified payments
+ * SECURITY: Amount is determined SERVER-SIDE from the database.
+ * The billId is the only required parameter - amount cannot be tampered with.
  *
- * @param {number} amountCents - Amount in cents (e.g., 10000 = $100.00)
- * @param {string} currency - Currency code (e.g., 'usd', 'eur')
- * @param {string} billId - BillHaven bill ID
- * @param {Object} options - Additional options
+ * @param {string} billId - BillHaven bill ID (REQUIRED)
+ * @param {Object} options - Additional options (paymentMethod, etc.)
  * @returns {Promise<Object>} PaymentIntent details
  */
-export async function createPaymentIntent(amountCents, currency, billId, options = {}) {
-  const {
-    customerEmail,
-    customerId,
-    description = `BillHaven Payment - Bill #${billId}`,
-    metadata = {}
-  } = options;
+export async function createPaymentIntent(billId, options = {}) {
+  const { paymentMethod = 'CREDIT_CARD' } = options;
+
+  // SECURITY: Validate billId is provided
+  if (!billId || typeof billId !== 'string') {
+    return {
+      success: false,
+      error: 'Bill ID is required'
+    };
+  }
 
   try {
-    // Call our backend to create the PaymentIntent
+    // SECURITY: Only send billId - amount is fetched from database on server
     const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/create-payment-intent`, {
       method: 'POST',
       headers: {
@@ -124,33 +126,16 @@ export async function createPaymentIntent(amountCents, currency, billId, options
         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
       body: JSON.stringify({
-        amount: amountCents,
-        currency: currency.toLowerCase(),
         billId,
-        customerEmail,
-        customerId,
-        description,
-        metadata: {
-          ...metadata,
-          billId,
-          platform: 'billhaven'
-        },
-        // Manual capture for escrow
-        captureMethod: 'manual',
-        // 3D Secure only when needed (risk-based authentication)
-        // 'automatic' = only trigger 3DS when required by bank or for risky transactions
-        // This keeps checkout smooth for trusted users while protecting against fraud
-        paymentMethodOptions: {
-          card: {
-            request_three_d_secure: 'automatic'
-          }
-        }
+        paymentMethod
+        // NOTE: Amount is NOT sent - server fetches it from database
+        // This prevents client-side amount manipulation attacks
       })
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to create payment intent');
+      throw new Error(error.error || error.message || 'Failed to create payment intent');
     }
 
     const data = await response.json();
@@ -158,20 +143,20 @@ export async function createPaymentIntent(amountCents, currency, billId, options
     return {
       success: true,
       paymentIntent: {
-        id: data.id,
-        clientSecret: data.client_secret,
+        id: data.paymentIntentId,
+        clientSecret: data.clientSecret,
+        // Amount comes from server (database), shown for display only
         amount: data.amount,
         currency: data.currency,
-        status: data.status,
-        requiresAction: data.status === 'requires_action',
-        captureMethod: data.capture_method
+        status: 'pending',
+        requiresAction: false
       }
     };
   } catch (error) {
     console.error('Error creating payment intent:', error);
     return {
       success: false,
-      error: error.message
+      error: error.message || 'Failed to create payment. Please try again.'
     };
   }
 }

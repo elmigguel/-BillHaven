@@ -326,34 +326,119 @@ app.get('/health', async (req, res) => {
 });
 
 // Create Stripe PaymentIntent - with rate limiting
+// SECURITY FIX: Amount is fetched from database, NOT from client request
 app.post('/api/create-payment-intent', rateLimit, async (req, res) => {
   try {
-    const { amount, currency, billId, paymentMethod } = req.body;
+    const { billId, paymentMethod } = req.body;
+
+    // SECURITY: Validate billId format to prevent injection
+    if (!billId || typeof billId !== 'string' || billId.length > 100) {
+      return res.status(400).json({ error: 'Invalid bill ID' });
+    }
+
+    // SECURITY: Fetch bill from database - NEVER trust client-provided amounts
+    const { data: bill, error: billError } = await supabase
+      .from('bills')
+      .select('id, amount, currency, status, created_by, claimed_by')
+      .eq('id', billId)
+      .single();
+
+    if (billError || !bill) {
+      console.error('Bill fetch error:', billError);
+      return res.status(404).json({ error: 'Bill not found' });
+    }
+
+    // SECURITY: Validate bill status - only allow payment for claimed bills
+    if (bill.status !== 'CLAIMED' && bill.status !== 'PENDING_PAYMENT') {
+      return res.status(400).json({
+        error: `Cannot create payment for bill with status: ${bill.status}`
+      });
+    }
+
+    // SECURITY: Amount comes from DATABASE, not client
+    const amountCents = Math.round(bill.amount * 100);
+    const currency = (bill.currency || 'EUR').toLowerCase();
+
+    console.log(`Creating PaymentIntent for bill ${billId}:`, {
+      amountFromDB: bill.amount,
+      amountCents,
+      currency,
+      status: bill.status
+    });
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe uses cents
-      currency: currency.toLowerCase(),
+      amount: amountCents,
+      currency: currency,
       payment_method_types: getPaymentMethodTypes(paymentMethod),
       metadata: {
         billId,
-        platform: 'BillHaven'
+        platform: 'BillHaven',
+        originalAmount: bill.amount.toString(),
+        createdBy: bill.created_by
       }
     });
 
+    // SECURITY: Update bill with payment intent ID for tracking
+    await supabase
+      .from('bills')
+      .update({
+        payment_intent_id: paymentIntent.id,
+        payment_status: 'PENDING'
+      })
+      .eq('id', billId);
+
     res.json({
       clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id
+      paymentIntentId: paymentIntent.id,
+      // Return amount for display purposes only (already set in Stripe)
+      amount: bill.amount,
+      currency: bill.currency
     });
   } catch (error) {
     console.error('PaymentIntent creation error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to create payment. Please try again.' });
   }
 });
 
 // Create OpenNode Lightning invoice - with rate limiting
+// SECURITY FIX: Amount is fetched from database, NOT from client request
 app.post('/api/create-lightning-invoice', rateLimit, async (req, res) => {
   try {
-    const { amount, currency, billId, description } = req.body;
+    const { billId } = req.body;
+
+    // SECURITY: Validate billId format
+    if (!billId || typeof billId !== 'string' || billId.length > 100) {
+      return res.status(400).json({ error: 'Invalid bill ID' });
+    }
+
+    // SECURITY: Fetch bill from database - NEVER trust client-provided amounts
+    const { data: bill, error: billError } = await supabase
+      .from('bills')
+      .select('id, amount, currency, status, title, created_by')
+      .eq('id', billId)
+      .single();
+
+    if (billError || !bill) {
+      console.error('Bill fetch error:', billError);
+      return res.status(404).json({ error: 'Bill not found' });
+    }
+
+    // SECURITY: Validate bill status
+    if (bill.status !== 'CLAIMED' && bill.status !== 'PENDING_PAYMENT') {
+      return res.status(400).json({
+        error: `Cannot create invoice for bill with status: ${bill.status}`
+      });
+    }
+
+    // SECURITY: Amount comes from DATABASE
+    const amount = bill.amount;
+    const currency = (bill.currency || 'EUR').toUpperCase();
+
+    console.log(`Creating Lightning invoice for bill ${billId}:`, {
+      amountFromDB: amount,
+      currency,
+      status: bill.status
+    });
 
     const response = await fetch('https://api.opennode.com/v1/charges', {
       method: 'POST',
@@ -363,8 +448,8 @@ app.post('/api/create-lightning-invoice', rateLimit, async (req, res) => {
       },
       body: JSON.stringify({
         amount,
-        currency: currency.toUpperCase(),
-        description: description || `BillHaven Payment - Bill #${billId}`,
+        currency: currency,
+        description: `BillHaven Payment - ${bill.title || 'Bill #' + billId}`,
         order_id: billId,
         callback_url: `${process.env.SERVER_URL || 'http://localhost:3001'}/webhooks/opennode`,
         success_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/success`,
@@ -378,16 +463,26 @@ app.post('/api/create-lightning-invoice', rateLimit, async (req, res) => {
       throw new Error(data.message || 'OpenNode API error');
     }
 
+    // SECURITY: Update bill with invoice ID for tracking
+    await supabase
+      .from('bills')
+      .update({
+        lightning_invoice_id: data.data.id,
+        payment_status: 'PENDING'
+      })
+      .eq('id', billId);
+
     res.json({
       invoiceId: data.data.id,
       lightningInvoice: data.data.lightning_invoice.payreq,
       btcAddress: data.data.chain_invoice?.address,
-      amount: data.data.amount,
+      amount: bill.amount, // From database
+      currency: bill.currency,
       expiresAt: data.data.expires_at
     });
   } catch (error) {
     console.error('Lightning invoice creation error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to create invoice. Please try again.' });
   }
 });
 
@@ -788,6 +883,109 @@ app.post('/api/v4/verify-payment', express.json(), rateLimit, async (req, res) =
     res.status(500).json({ success: false, error: result.error });
   }
 });
+
+// ===========================================
+// WALLET SIGNATURE VERIFICATION (SECURITY)
+// ===========================================
+
+/**
+ * Verify wallet signature server-side
+ * SECURITY: This is the authoritative verification - client-side is just UX
+ */
+app.post('/api/auth/verify-signature', rateLimit, express.json(), async (req, res) => {
+  try {
+    const { message, signature, walletAddress } = req.body;
+
+    // SECURITY: Validate inputs
+    if (!message || typeof message !== 'string' || message.length > 2000) {
+      return res.status(400).json({ error: 'Invalid message' });
+    }
+
+    if (!signature || typeof signature !== 'string' || !signature.startsWith('0x')) {
+      return res.status(400).json({ error: 'Invalid signature format' });
+    }
+
+    if (!walletAddress || typeof walletAddress !== 'string' || !walletAddress.startsWith('0x')) {
+      return res.status(400).json({ error: 'Invalid wallet address' });
+    }
+
+    // SECURITY: Verify the signature
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+
+    const isValid = recoveredAddress.toLowerCase() === walletAddress.toLowerCase();
+
+    if (!isValid) {
+      console.warn(`Signature verification failed: expected ${walletAddress}, got ${recoveredAddress}`);
+    }
+
+    res.json({
+      valid: isValid,
+      recoveredAddress: isValid ? recoveredAddress.toLowerCase() : null
+    });
+
+  } catch (error) {
+    console.error('Signature verification error:', error);
+    res.status(400).json({
+      valid: false,
+      error: 'Signature verification failed'
+    });
+  }
+});
+
+/**
+ * CSRF Token endpoint
+ * SECURITY: Provides CSRF tokens for state-changing operations
+ */
+const csrfTokens = new Map();
+const CSRF_EXPIRY = 60 * 60 * 1000; // 1 hour
+
+app.get('/api/csrf-token', rateLimit, (req, res) => {
+  // Generate secure token
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiry = Date.now() + CSRF_EXPIRY;
+
+  // Store with session identifier (use IP + user agent as simple session)
+  const sessionId = crypto.createHash('sha256')
+    .update(`${req.ip}-${req.headers['user-agent']}`)
+    .digest('hex');
+
+  csrfTokens.set(sessionId, { token, expiry });
+
+  // Clean old tokens periodically
+  if (Math.random() < 0.1) {
+    const now = Date.now();
+    for (const [key, value] of csrfTokens.entries()) {
+      if (value.expiry < now) {
+        csrfTokens.delete(key);
+      }
+    }
+  }
+
+  res.json({ token });
+});
+
+/**
+ * CSRF validation middleware
+ */
+function validateCSRF(req, res, next) {
+  const token = req.headers['x-csrf-token'];
+
+  if (!token) {
+    return res.status(403).json({ error: 'CSRF token required' });
+  }
+
+  const sessionId = crypto.createHash('sha256')
+    .update(`${req.ip}-${req.headers['user-agent']}`)
+    .digest('hex');
+
+  const stored = csrfTokens.get(sessionId);
+
+  if (!stored || stored.token !== token || stored.expiry < Date.now()) {
+    return res.status(403).json({ error: 'Invalid or expired CSRF token' });
+  }
+
+  next();
+}
 
 // Start server
 app.listen(PORT, () => {

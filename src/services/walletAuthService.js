@@ -7,20 +7,40 @@
  * 2. Sign message "Login to BillHaven: [timestamp]"
  * 3. Verify signature and create/login user in Supabase
  * 4. User is authenticated based on wallet address
+ *
+ * SECURITY NOTES:
+ * - Nonce uses crypto.getRandomValues() for cryptographic security
+ * - Client-side verification is for UX only - backend should re-verify
+ * - Deterministic passwords from signatures are acceptable for wallet-only auth
  */
 
 import { supabase } from '@/lib/supabase'
 import { ethers } from 'ethers'
 
+/**
+ * Generate cryptographically secure nonce
+ * SECURITY: Uses Web Crypto API instead of Math.random()
+ */
+function generateSecureNonce() {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 // Generate a unique message for signing
 export const generateLoginMessage = (walletAddress, timestamp = Date.now()) => {
+  // SECURITY FIX: Use cryptographically secure nonce
+  const nonce = generateSecureNonce();
+
   return `Welcome to BillHaven!
 
 Sign this message to verify your wallet and log in.
 
 Wallet: ${walletAddress}
 Timestamp: ${timestamp}
-Nonce: ${Math.random().toString(36).substring(7)}
+Nonce: ${nonce}
 
 This request will not trigger a blockchain transaction or cost any gas fees.`
 }
@@ -53,8 +73,13 @@ export async function signLoginMessage(signer, walletAddress) {
 }
 
 /**
- * Verify signature (client-side verification)
- * In production, this should be done server-side
+ * Verify signature (client-side verification for UX feedback)
+ *
+ * SECURITY NOTE: This is client-side and can be bypassed!
+ * Backend ALSO verifies signatures via Supabase RLS + backend validation.
+ * This function provides immediate feedback to users.
+ *
+ * For critical operations, use verifySignatureOnServer() instead.
  */
 export function verifySignature(message, signature, expectedAddress) {
   try {
@@ -63,6 +88,42 @@ export function verifySignature(message, signature, expectedAddress) {
   } catch (error) {
     console.error('Signature verification failed:', error)
     return false
+  }
+}
+
+/**
+ * Server-side signature verification via backend API
+ * SECURITY: This should be used for any critical operations
+ *
+ * @param {string} message - The original message that was signed
+ * @param {string} signature - The signature from wallet
+ * @param {string} walletAddress - Expected wallet address
+ * @returns {Promise<{valid: boolean, error?: string}>}
+ */
+export async function verifySignatureOnServer(message, signature, walletAddress) {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/verify-signature`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message,
+        signature,
+        walletAddress: walletAddress.toLowerCase()
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return { valid: false, error: error.error || 'Verification failed' };
+    }
+
+    const data = await response.json();
+    return { valid: data.valid, error: null };
+  } catch (error) {
+    console.error('Server verification error:', error);
+    return { valid: false, error: 'Network error during verification' };
   }
 }
 

@@ -57,10 +57,12 @@ export async function generateReferralCode(userId) {
   const maxAttempts = 10;
 
   while (!isUnique && attempts < maxAttempts) {
-    // Generate random code
+    // SECURITY: Generate cryptographically secure random code
     code = '';
+    const randomBytes = new Uint8Array(REFERRAL_CODE_LENGTH);
+    crypto.getRandomValues(randomBytes);
     for (let i = 0; i < REFERRAL_CODE_LENGTH; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
+      code += characters.charAt(randomBytes[i] % characters.length);
     }
 
     // Check if code already exists

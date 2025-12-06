@@ -211,10 +211,18 @@ export async function completeInvoicePurchase(listingId, transactionHash) {
 /**
  * Generate legal assignment documents
  * These are for record-keeping and tax documentation
+ * SECURITY: Uses crypto.getRandomValues() for document IDs
  */
 export async function generateAssignmentDocuments(listing) {
   const timestamp = new Date().toISOString()
-  const documentId = `BH-DOC-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+  // Generate cryptographically secure random ID
+  const array = new Uint8Array(8);
+  crypto.getRandomValues(array);
+  const randomPart = Array.from(array)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+  const documentId = `BH-DOC-${Date.now()}-${randomPart}`
 
   // Invoice Purchase Agreement
   const purchaseAgreement = {
