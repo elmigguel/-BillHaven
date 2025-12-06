@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import EnhancedHero from '@/components/sections/EnhancedHero';
 import TrustIndicators from '@/components/trust/TrustIndicators';
+import AnimatedMarquee from '@/components/ui/AnimatedMarquee';
+import LiveCounter from '@/components/ui/LiveCounter';
 import { ChainLogos } from '@/components/ui/ChainSelector';
 import BillHavenLogo from '@/components/ui/BillHavenLogo';
 import {
@@ -103,11 +105,11 @@ const features = [
     desc: 'Starting from just 0.8%',
   },
   {
-    icon: Globe,
+    icon: Receipt,
     color: 'text-brand-cyan',
     bgColor: 'bg-brand-cyan/10',
-    title: '11 Blockchains',
-    desc: 'Multi-chain support worldwide',
+    title: 'Professional Records',
+    desc: 'Detailed documentation for your accountant',
   },
 ];
 
@@ -127,6 +129,24 @@ export default function Home() {
 
       {/* Trust Indicators Section */}
       <TrustIndicators />
+
+      {/* Live Stats Counter */}
+      <LiveCounter className="bg-dark-secondary/30 border-y border-dark-border/20" />
+
+      {/* Animated Chain Marquee */}
+      <div className="py-8 border-b border-dark-border/30 bg-dark-secondary/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.p
+            className="text-center text-gray-400 text-sm mb-4"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
+            Trade across 12 blockchain networks
+          </motion.p>
+        </div>
+        <AnimatedMarquee speed={40} />
+      </div>
 
       {/* How it Works */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
@@ -336,7 +356,7 @@ export default function Home() {
               {/* Rows */}
               {[
                 { feature: 'Smart Contract Escrow', billhaven: true, p2p: false, traditional: false },
-                { feature: 'Multi-Chain Support', billhaven: '11 Networks', p2p: '2-3 Networks', traditional: false },
+                { feature: 'Multi-Chain Support', billhaven: '12 Networks', p2p: '2-3 Networks', traditional: false },
                 { feature: 'Platform Fees', billhaven: '0.8-2%', p2p: '1-5%', traditional: '3-5%' },
                 { feature: 'Settlement Time', billhaven: 'Instant', p2p: '15-60 min', traditional: '1-3 days' },
                 { feature: 'No KYC Required', billhaven: true, p2p: false, traditional: false },
@@ -407,18 +427,18 @@ export default function Home() {
               Supported Blockchains
             </h3>
             <p className="text-gray-400">
-              Trade across 11 networks with real-time settlements
+              Trade across 12 networks with real-time settlements
             </p>
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-4"
+            className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-4"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            {['ethereum', 'polygon', 'arbitrum', 'optimism', 'base', 'bsc', 'avalanche', 'solana', 'ton', 'bitcoin', 'lightning'].map((chain, index) => {
+            {['ethereum', 'polygon', 'arbitrum', 'optimism', 'base', 'bsc', 'avalanche', 'solana', 'ton', 'bitcoin', 'lightning', 'zcash'].map((chain, index) => {
               const Logo = ChainLogos[chain];
               return (
                 <motion.div
@@ -458,14 +478,14 @@ export default function Home() {
                 </span>
               </h2>
               <p className="text-gray-400 text-lg mb-6 leading-relaxed">
-                BillHaven bridges the gap between traditional finance and cryptocurrency. Pay fiat for someone's bill and receive crypto directly to your wallet - secured by smart contract escrow.
+                BillHaven bridges the gap between traditional finance and cryptocurrency. Pay fiat for someone's bill and receive crypto directly to your wallet - secured by smart contract escrow. Professional documentation for every transaction.
               </p>
               <div className="space-y-4">
                 {[
                   { icon: Lock, text: 'Non-custodial escrow - you control your funds' },
                   { icon: Sparkles, text: 'OpenZeppelin audited smart contracts' },
-                  { icon: TrendingUp, text: 'Volume-based fee tiers from 0.8%' },
-                  { icon: Clock, text: 'Instant settlements on confirmation' },
+                  { icon: Receipt, text: 'Invoice factoring with comprehensive paperwork' },
+                  { icon: Clock, text: 'Detailed records for your accountant' },
                 ].map((item, index) => (
                   <motion.div
                     key={item.text}
@@ -524,7 +544,7 @@ export default function Home() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Total Chains</span>
-                      <span className="text-white">11 Networks</span>
+                      <span className="text-white">12 Networks</span>
                     </div>
                   </div>
 

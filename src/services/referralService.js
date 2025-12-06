@@ -1,18 +1,41 @@
 /**
- * BillHaven Referral Service
+ * BillHaven Referral Service V2 - 3-TIER VIRAL GROWTH SYSTEM
  *
- * Handles referral code generation, tracking, and affiliate discount management.
+ * Based on research: Top platforms use 40-70% commissions (MEXC: 70%, Binance: 50%)
  *
- * AFFILIATE DISCOUNT RULES:
- * - Per successful referral: 3 discounted transactions
- * - Volume cap: $10,000 MAX TOTAL across those 3 transactions
- * - Discount: 50% off ONLY on <$10K tier (4.4% → 2.2%)
- * - Minimum referral: Friend must complete >$500 transaction to activate
+ * TIER STRUCTURE:
+ * - Tier 1: 40% of referee's fees (direct referral)
+ * - Tier 2: 10% of referee's referee's fees
+ * - Tier 3: 5% of 3rd level fees
+ *
+ * BONUSES:
+ * - Signup bonus: $5 platform credit
+ * - First trade bonus: $10 when referee completes first trade
+ * - Volume milestones: $25-$1000 bonuses
  */
 
 import { supabase } from '../lib/supabase';
 
-// Constants
+// 3-TIER COMMISSION RATES - Industry leading!
+export const COMMISSION_RATES = {
+  tier1: 0.40, // 40% of fees - direct referral
+  tier2: 0.10, // 10% of fees - 2nd level
+  tier3: 0.05, // 5% of fees - 3rd level
+};
+
+// REFERRAL BONUSES
+export const REFERRAL_BONUSES = {
+  signupBonus: 5, // $5 equivalent in platform credit
+  firstTradeBonus: 10, // $10 when referee completes first trade
+  volumeMilestones: [
+    { volume: 1000, bonus: 25 },
+    { volume: 5000, bonus: 100 },
+    { volume: 10000, bonus: 250 },
+    { volume: 50000, bonus: 1000 },
+  ],
+};
+
+// Legacy constants for backwards compatibility
 const REFERRAL_CODE_LENGTH = 8;
 const DISCOUNT_TRANSACTIONS_PER_REFERRAL = 3;
 const DISCOUNT_VOLUME_CAP = 10000;
@@ -513,6 +536,169 @@ export const REFERRAL_CONSTANTS = {
   DISCOUNTED_FEE: DISCOUNTED_FEE
 };
 
+// ============================================
+// V2: 3-TIER EARNING SYSTEM
+// ============================================
+
+/**
+ * Record 3-tier referral earnings when a trade completes
+ * @param {string} traderId - User who completed the trade
+ * @param {number} feeAmount - Fee charged for the trade
+ * @param {string} billId - Bill/transaction ID
+ */
+export async function recordReferralEarnings(traderId, feeAmount, billId) {
+  if (!traderId || !feeAmount) return;
+
+  // Find all referrers for this trader (up to 3 tiers)
+  const { data: tier1Ref } = await supabase
+    .from('referrals')
+    .select('referrer_id')
+    .eq('referred_id', traderId)
+    .eq('status', 'active')
+    .single();
+
+  if (!tier1Ref) return;
+
+  // Tier 1 earnings
+  const tier1Earnings = feeAmount * COMMISSION_RATES.tier1;
+  await recordEarning(tier1Ref.referrer_id, traderId, billId, feeAmount, tier1Earnings, 1);
+
+  // Find Tier 2 (who referred the Tier 1 referrer)
+  const { data: tier2Ref } = await supabase
+    .from('referrals')
+    .select('referrer_id')
+    .eq('referred_id', tier1Ref.referrer_id)
+    .eq('status', 'active')
+    .single();
+
+  if (tier2Ref) {
+    const tier2Earnings = feeAmount * COMMISSION_RATES.tier2;
+    await recordEarning(tier2Ref.referrer_id, traderId, billId, feeAmount, tier2Earnings, 2);
+
+    // Find Tier 3
+    const { data: tier3Ref } = await supabase
+      .from('referrals')
+      .select('referrer_id')
+      .eq('referred_id', tier2Ref.referrer_id)
+      .eq('status', 'active')
+      .single();
+
+    if (tier3Ref) {
+      const tier3Earnings = feeAmount * COMMISSION_RATES.tier3;
+      await recordEarning(tier3Ref.referrer_id, traderId, billId, feeAmount, tier3Earnings, 3);
+    }
+  }
+}
+
+/**
+ * Record a single earning entry
+ */
+async function recordEarning(referrerId, traderId, billId, feeAmount, earnings, tier) {
+  await supabase
+    .from('referral_earnings')
+    .insert({
+      referrer_id: referrerId,
+      trader_id: traderId,
+      bill_id: billId,
+      fee_amount: feeAmount,
+      earnings_amount: earnings,
+      tier: tier,
+      status: 'pending', // Will be 'paid' after withdrawal
+    });
+
+  // Update referrer's pending balance
+  await supabase.rpc('increment_referral_balance', {
+    p_user_id: referrerId,
+    p_amount: earnings,
+  });
+}
+
+/**
+ * Get earnings history for a user
+ */
+export async function getEarningsHistory(userId, limit = 20) {
+  const { data, error } = await supabase
+    .from('referral_earnings')
+    .select('*')
+    .eq('referrer_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching earnings:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Get referral earnings summary by tier
+ */
+export async function getEarningsSummary(userId) {
+  const { data: earnings } = await supabase
+    .from('referral_earnings')
+    .select('tier, earnings_amount')
+    .eq('referrer_id', userId);
+
+  const summary = { tier1: 0, tier2: 0, tier3: 0, total: 0 };
+
+  earnings?.forEach((e) => {
+    summary[`tier${e.tier}`] += e.earnings_amount;
+    summary.total += e.earnings_amount;
+  });
+
+  return summary;
+}
+
+/**
+ * Get referral leaderboard
+ */
+export async function getReferralLeaderboard(limit = 10) {
+  const { data, error } = await supabase
+    .from('referral_earnings')
+    .select('referrer_id, earnings_amount')
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+
+  // Aggregate by referrer
+  const totals = {};
+  data?.forEach((e) => {
+    totals[e.referrer_id] = (totals[e.referrer_id] || 0) + e.earnings_amount;
+  });
+
+  // Sort and limit
+  const sorted = Object.entries(totals)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, limit);
+
+  // Get profile info
+  const userIds = sorted.map(([id]) => id);
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, wallet_address')
+    .in('id', userIds);
+
+  return sorted.map(([userId, total], index) => {
+    const profile = profiles?.find((p) => p.id === userId);
+    return {
+      rank: index + 1,
+      userId,
+      totalEarned: total,
+      name: profile?.full_name || profile?.wallet_address?.slice(0, 8) + '...',
+    };
+  });
+}
+
+/**
+ * Get referral link with tracking
+ */
+export function getReferralLink(referralCode) {
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://billhaven.app';
+  return `${baseUrl}?ref=${referralCode}`;
+}
+
 export default {
   generateReferralCode,
   getReferralCode,
@@ -522,5 +708,14 @@ export default {
   recordDiscountUsage,
   getUserDiscountBalance,
   checkAndActivateReferral,
-  REFERRAL_CONSTANTS
+  // V2 3-Tier System
+  recordReferralEarnings,
+  getEarningsHistory,
+  getEarningsSummary,
+  getReferralLeaderboard,
+  getReferralLink,
+  // Constants
+  REFERRAL_CONSTANTS,
+  COMMISSION_RATES,
+  REFERRAL_BONUSES,
 };

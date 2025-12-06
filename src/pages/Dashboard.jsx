@@ -8,13 +8,16 @@ import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import StatsCard from '../components/dashboard/StatsCard';
 import BillCard from '../components/bills/BillCard';
+import DailyStreak from '../components/gamification/DailyStreak';
+import Leaderboard, { MiniLeaderboard } from '../components/gamification/Leaderboard';
 import {
   PlusCircle,
   Receipt,
   Clock,
   CheckCircle2,
   Wallet,
-  DollarSign
+  DollarSign,
+  Trophy
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -123,6 +126,21 @@ export default function Dashboard() {
             index={3}
           />
         </div>
+
+        {/* Gamification Section - UNIQUE FEATURE */}
+        {user && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Daily Streak - Full Version */}
+            <div className="lg:col-span-2">
+              <DailyStreak />
+            </div>
+
+            {/* Mini Leaderboard */}
+            <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
+              <MiniLeaderboard />
+            </div>
+          </div>
+        )}
 
         {/* Wereldwijde Openstaande Bills */}
         <div className="mb-8">

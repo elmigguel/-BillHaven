@@ -6,9 +6,10 @@
  * Includes network switching and disconnect functionality.
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useWallet } from '../../contexts/WalletContext'
 import { useTonWalletContext } from '../../contexts/TonWalletContext'
+import { useAuth } from '../../contexts/AuthContext'
 import { TonConnectButton } from '@tonconnect/ui-react'
 import { Button } from '../ui/button'
 import {
@@ -61,6 +62,7 @@ export default function ConnectWalletButton() {
   const {
     walletAddress: evmAddress = '',
     chainId = null,
+    signer = null,
     isConnected: evmConnected = false,
     isConnecting: evmConnecting = false,
     error: evmError = null,
@@ -86,9 +88,54 @@ export default function ConnectWalletButton() {
     network: tonNetwork = 'mainnet',
   } = tonWallet;
 
+  // Auth Context for wallet-based login
+  const { user, signInWithWallet, signOut: authSignOut } = useAuth()
+
   // State for blockchain type selection
   const [blockchainType, setBlockchainType] = useState('evm') // 'evm' | 'ton'
   const [copied, setCopied] = useState(false)
+  const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [authTriggered, setAuthTriggered] = useState(false)
+
+  // Auto-authenticate when EVM wallet connects
+  useEffect(() => {
+    const authenticateWithWallet = async () => {
+      // Only trigger if:
+      // 1. EVM wallet is connected
+      // 2. We have a signer
+      // 3. User is not already logged in
+      // 4. Auth hasn't been triggered yet for this connection
+      if (evmConnected && signer && evmAddress && !user && !authTriggered && !isAuthenticating) {
+        setIsAuthenticating(true)
+        setAuthTriggered(true)
+
+        try {
+          console.log('Attempting wallet authentication...')
+          const result = await signInWithWallet(signer, evmAddress)
+
+          if (result.error) {
+            console.error('Wallet auth failed:', result.error)
+            // Don't disconnect on auth failure, user can retry
+          } else {
+            console.log('Wallet auth successful!', result.isNewUser ? '(New user)' : '(Existing user)')
+          }
+        } catch (err) {
+          console.error('Wallet auth error:', err)
+        } finally {
+          setIsAuthenticating(false)
+        }
+      }
+    }
+
+    authenticateWithWallet()
+  }, [evmConnected, signer, evmAddress, user, signInWithWallet, authTriggered, isAuthenticating])
+
+  // Reset auth trigger when wallet disconnects
+  useEffect(() => {
+    if (!evmConnected) {
+      setAuthTriggered(false)
+    }
+  }, [evmConnected])
 
   // Derived state based on selected blockchain
   const isConnected = blockchainType === 'ton' ? tonConnected : evmConnected
@@ -107,13 +154,18 @@ export default function ConnectWalletButton() {
     }
   }
 
-  // Disconnect based on blockchain type
-  const disconnect = () => {
+  // Disconnect based on blockchain type + sign out from auth
+  const disconnect = async () => {
     if (blockchainType === 'ton') {
       disconnectTon()
     } else {
       disconnectEvm()
     }
+    // Also sign out from Supabase auth when wallet disconnects
+    if (user) {
+      await authSignOut()
+    }
+    setAuthTriggered(false)
   }
 
   // Copy address to clipboard
@@ -156,11 +208,11 @@ export default function ConnectWalletButton() {
         ) : (
           <Button
             onClick={connectWallet}
-            disabled={isConnecting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            disabled={isConnecting || isAuthenticating}
+            className="bg-gradient-to-r from-brand-blue to-brand-purple hover:from-brand-blue/90 hover:to-brand-purple/90 text-white"
           >
             <Wallet className="w-4 h-4 mr-2" />
-            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+            {isConnecting ? 'Connecting...' : isAuthenticating ? 'Signing In...' : 'Connect Wallet'}
           </Button>
         )}
       </div>

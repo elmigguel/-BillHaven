@@ -703,8 +703,8 @@
       ]
     },
     "/home/elmigguel/BillHaven/contracts/BillHavenEscrowV3.sol": {
-      "lastModificationDate": 1764681386522,
-      "contentHash": "e345476fa1efdce29c7f020e99efa5ac",
+      "lastModificationDate": 1764931075244,
+      "contentHash": "c5c4001a69e99c31998f28f3e0dafd72",
       "sourceName": "contracts/BillHavenEscrowV3.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1057,8 +1057,8 @@
       ]
     },
     "/home/elmigguel/BillHaven/contracts/BillHavenEscrowV4.sol": {
-      "lastModificationDate": 1764700025832,
-      "contentHash": "36422c5e939c53b02219bd3fd4c6eb73",
+      "lastModificationDate": 1764950048843,
+      "contentHash": "6d504ae38cdf9df2ac0a485ab99be12a",
       "sourceName": "contracts/BillHavenEscrowV4.sol",
       "solcConfig": {
         "version": "0.8.20",

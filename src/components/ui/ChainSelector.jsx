@@ -110,6 +110,19 @@ const ChainLogos = {
       <path fill="#FFF" fillOpacity="0.5" d="M22.5 10L12 13.5l4.5 4.5 6-8z"/>
     </svg>
   ),
+  zcash: () => (
+    <svg viewBox="0 0 32 32" className="w-full h-full">
+      <defs>
+        <linearGradient id="zec-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#F4B728"/>
+          <stop offset="100%" stopColor="#E8A914"/>
+        </linearGradient>
+      </defs>
+      <circle fill="url(#zec-grad)" cx="16" cy="16" r="16"/>
+      <path fill="#231F20" d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/>
+      <path fill="#231F20" d="M15 11h2v2h-2zm0 8h2v2h-2zm-3-6h8v1.5l-5.5 3H20v1.5h-8v-1.5l5.5-3H12z"/>
+    </svg>
+  ),
 };
 
 // Chain configurations with all details
@@ -129,6 +142,7 @@ const CHAINS = {
   bitcoin: { id: 'bitcoin', name: 'Bitcoin', symbol: 'BTC', type: 'mainnet', color: '#F7931A', fees: '~$1-10', speed: '10m', category: 'non-evm' },
   lightning: { id: 'lightning', name: 'Lightning', symbol: 'BTC', type: 'mainnet', color: '#FFD93D', fees: '~$0.001', speed: 'Instant', category: 'non-evm', recommended: true },
   tron: { id: 'tron', name: 'TRON', symbol: 'TRX', type: 'mainnet', color: '#FF0013', fees: '~$0.01', speed: '3s', category: 'non-evm' },
+  zcash: { id: 'zcash', name: 'Zcash', symbol: 'ZEC', type: 'mainnet', color: '#F4B728', fees: '~$0.001', speed: '75s', category: 'non-evm', privacy: true },
 };
 
 export default function ChainSelector({

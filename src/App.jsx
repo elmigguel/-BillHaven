@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { WalletProvider } from './contexts/WalletContext';
 import { TonWalletProvider } from './contexts/TonWalletContext';
 import { SolanaWalletProvider } from './contexts/SolanaWalletContext';
@@ -21,6 +22,9 @@ import Settings from './pages/Settings';
 import DisputeAdmin from './pages/DisputeAdmin';
 import Referral from './pages/Referral';
 import Support from './pages/Support';
+import Premium from './pages/Premium';
+import Trust from './pages/Trust';
+import Quests from './components/gamification/Quests';
 
 // Mock createPageUrl function
 const pageUrlMap = {
@@ -37,6 +41,9 @@ const pageUrlMap = {
   DisputeAdmin: '/dispute-admin',
   Referral: '/referral',
   Support: '/support',
+  Premium: '/premium',
+  Trust: '/trust',
+  Quests: '/quests',
 };
 
 window.createPageUrl = (pageName) => pageUrlMap[pageName] || '/';
@@ -125,6 +132,28 @@ function AnimatedRoutes() {
           path="/support"
           element={<Layout><Support /></Layout>}
         />
+
+        {/* Premium page (public, can view without login) */}
+        <Route
+          path={window.createPageUrl('Premium')}
+          element={<Layout><Premium /></Layout>}
+        />
+
+        {/* Trust dashboard (public) */}
+        <Route
+          path={window.createPageUrl('Trust')}
+          element={<Layout><Trust /></Layout>}
+        />
+
+        {/* Quests page (protected) */}
+        <Route
+          path={window.createPageUrl('Quests')}
+          element={
+            <ProtectedRoute>
+              <Layout><Quests /></Layout>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </AnimatePresence>
   );
@@ -170,23 +199,25 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AuthProvider>
-          <React.Suspense fallback={<LoadingScreen />}>
-            <ErrorBoundary>
-              <WalletProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <React.Suspense fallback={<LoadingScreen />}>
+              <ErrorBoundary>
+                <WalletProvider>
                 <ErrorBoundary>
                   <TonWalletProvider>
                     <ErrorBoundary>
-                      <SolanaWalletProvider network="mainnet" autoConnect={false}>
-                        <AnimatedRoutes />
-                      </SolanaWalletProvider>
-                    </ErrorBoundary>
-                  </TonWalletProvider>
-                </ErrorBoundary>
-              </WalletProvider>
-            </ErrorBoundary>
-          </React.Suspense>
-        </AuthProvider>
+                        <SolanaWalletProvider network="mainnet" autoConnect={false}>
+                          <AnimatedRoutes />
+                        </SolanaWalletProvider>
+                      </ErrorBoundary>
+                    </TonWalletProvider>
+                  </ErrorBoundary>
+                </WalletProvider>
+              </ErrorBoundary>
+            </React.Suspense>
+          </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );

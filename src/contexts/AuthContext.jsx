@@ -1,5 +1,11 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+  signLoginMessage,
+  walletLogin,
+  linkWalletToAccount,
+  getUserByWallet
+} from '../services/walletAuthService'
 
 const AuthContext = createContext({})
 
@@ -189,18 +195,97 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // WALLET-ONLY AUTH - Sign in with wallet signature
+  const signInWithWallet = useCallback(async (signer, walletAddress) => {
+    if (!signer || !walletAddress) {
+      return { data: null, error: new Error('Wallet not connected') }
+    }
+
+    try {
+      // Step 1: Sign the login message
+      const signResult = await signLoginMessage(signer, walletAddress)
+
+      // Step 2: Authenticate with Supabase
+      const { data, isNewUser } = await walletLogin(
+        signResult.walletAddress,
+        signResult.signature,
+        signResult.message
+      )
+
+      if (data?.user) {
+        setUser(data.user)
+        await fetchProfile(data.user.id)
+      }
+
+      return {
+        data,
+        error: null,
+        isNewUser
+      }
+    } catch (error) {
+      console.error('Wallet auth error:', error)
+      return { data: null, error }
+    }
+  }, [])
+
+  // Link existing account to wallet
+  const linkWallet = useCallback(async (signer, walletAddress) => {
+    if (!user?.id || !signer || !walletAddress) {
+      return { data: null, error: new Error('User or wallet not available') }
+    }
+
+    try {
+      const signResult = await signLoginMessage(signer, walletAddress)
+
+      const data = await linkWalletToAccount(
+        user.id,
+        signResult.walletAddress,
+        signResult.signature,
+        signResult.message
+      )
+
+      setProfile(prev => ({ ...prev, wallet_address: walletAddress.toLowerCase() }))
+
+      return { data, error: null }
+    } catch (error) {
+      return { data: null, error }
+    }
+  }, [user])
+
+  // Check if user has wallet linked
+  const hasWalletLinked = useCallback(() => {
+    return !!profile?.wallet_address
+  }, [profile])
+
+  // Get wallet address from profile
+  const getLinkedWallet = useCallback(() => {
+    return profile?.wallet_address || null
+  }, [profile])
+
+  // Check if auth is wallet-based
+  const isWalletAuth = useCallback(() => {
+    return user?.email?.endsWith('@wallet.billhaven.app') || false
+  }, [user])
+
   const value = {
     user,
     profile,
     loading,
     authError,
+    // Traditional auth (kept for backwards compatibility)
     signUp,
     signIn,
     signOut,
     resetPassword,
     updateProfile,
     isAdmin,
-    verifyAdminServer
+    verifyAdminServer,
+    // WALLET AUTH - Primary method
+    signInWithWallet,
+    linkWallet,
+    hasWalletLinked,
+    getLinkedWallet,
+    isWalletAuth
   }
 
   return (

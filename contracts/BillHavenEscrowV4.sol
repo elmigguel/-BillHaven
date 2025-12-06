@@ -1150,23 +1150,72 @@ contract BillHavenEscrowV4 is ReentrancyGuard, Pausable, AccessControl {
     }
 
     /**
-     * @notice Emergency withdraw native tokens (only when paused)
+     * @notice SAFE rescue of stuck native tokens (only excess, not active escrows)
+     * @dev V4 SECURITY FIX: Replaces dangerous emergencyWithdraw that could drain user funds
+     * @dev Calculates total locked in active bills and only allows withdrawal of excess
      */
-    function emergencyWithdraw() external onlyRole(ADMIN_ROLE) whenPaused {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No balance");
-        (bool success, ) = payable(msg.sender).call{value: balance}("");
-        require(success, "Withdraw failed");
+    function rescueStuckFunds() external onlyRole(ADMIN_ROLE) whenPaused {
+        // Calculate total locked in active bills
+        uint256 totalLocked = 0;
+        for (uint256 i = 1; i <= billCounter; i++) {
+            Bill storage bill = bills[i];
+            if (bill.token == address(0) &&
+                bill.status != ConfirmationStatus.RELEASED &&
+                bill.status != ConfirmationStatus.REFUNDED &&
+                bill.status != ConfirmationStatus.CANCELLED) {
+                totalLocked += bill.amount + bill.platformFee;
+            }
+        }
+
+        uint256 available = address(this).balance - totalLocked;
+        require(available > 0, "No excess funds");
+
+        (bool success, ) = payable(feeWallet).call{value: available}("");
+        require(success, "Rescue failed");
     }
 
     /**
-     * @notice Emergency withdraw ERC20 tokens (only when paused)
+     * @notice SAFE rescue of stuck ERC20 tokens (only excess, not active escrows)
+     * @dev V4 SECURITY FIX: Replaces dangerous emergencyWithdrawToken
      */
-    function emergencyWithdrawToken(address _token) external onlyRole(ADMIN_ROLE) whenPaused {
+    function rescueStuckTokens(address _token) external onlyRole(ADMIN_ROLE) whenPaused {
         if (_token == address(0)) revert InvalidAddress();
+
+        // Calculate total locked in active bills for this token
+        uint256 totalLocked = 0;
+        for (uint256 i = 1; i <= billCounter; i++) {
+            Bill storage bill = bills[i];
+            if (bill.token == _token &&
+                bill.status != ConfirmationStatus.RELEASED &&
+                bill.status != ConfirmationStatus.REFUNDED &&
+                bill.status != ConfirmationStatus.CANCELLED) {
+                totalLocked += bill.amount + bill.platformFee;
+            }
+        }
+
         uint256 balance = IERC20(_token).balanceOf(address(this));
-        require(balance > 0, "No token balance");
-        IERC20(_token).safeTransfer(msg.sender, balance);
+        uint256 available = balance - totalLocked;
+        require(available > 0, "No excess tokens");
+
+        IERC20(_token).safeTransfer(feeWallet, available);
+    }
+
+    /**
+     * @notice REMOVED: emergencyWithdraw is a security vulnerability
+     * @dev This function was removed because it could drain ALL user funds
+     * Use rescueStuckFunds() instead which only rescues excess (non-escrowed) funds
+     */
+    function emergencyWithdraw() external view onlyRole(ADMIN_ROLE) {
+        revert("REMOVED: Use rescueStuckFunds() - protects user escrows");
+    }
+
+    /**
+     * @notice REMOVED: emergencyWithdrawToken is a security vulnerability
+     * @dev This function was removed because it could drain ALL user tokens
+     * Use rescueStuckTokens() instead which only rescues excess tokens
+     */
+    function emergencyWithdrawToken(address) external view onlyRole(ADMIN_ROLE) {
+        revert("REMOVED: Use rescueStuckTokens() - protects user escrows");
     }
 
     // Receive function to accept ETH/MATIC
