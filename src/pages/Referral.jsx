@@ -75,23 +75,45 @@ export default function Referral() {
         setReferralCode(profile.referral_code);
       }
 
-      // Load referral stats (mock data for now - replace with actual DB queries)
-      setStats({
-        totalReferrals: 5,
-        activeReferrals: 3,
-        discountedTransactionsRemaining: 9,
-        volumeRemaining: 8500,
-        totalSaved: 245.50
-      });
+      // Load referral stats from database
+      const { data: referrals, error: referralsError } = await supabase
+        .from('referrals')
+        .select('*, referred:profiles!referred_id(email, full_name)')
+        .eq('referrer_id', user.id);
 
-      // Load referral history (mock data)
-      setReferralHistory([
-        { id: 1, username: 'user***', status: 'Active', date: '2024-11-15', firstTransaction: 750 },
-        { id: 2, username: 'trad***', status: 'Active', date: '2024-11-10', firstTransaction: 1200 },
-        { id: 3, username: 'cryp***', status: 'Active', date: '2024-11-05', firstTransaction: 550 },
-        { id: 4, username: 'btc_***', status: 'Pending', date: '2024-11-20', firstTransaction: 0 },
-        { id: 5, username: 'eth_***', status: 'Pending', date: '2024-11-22', firstTransaction: 0 },
-      ]);
+      if (!referralsError && referrals) {
+        const activeRefs = referrals.filter(r => r.status === 'active' || r.status === 'completed');
+        const totalSaved = referrals.reduce((sum, r) => sum + (r.discount_amount || 0), 0);
+
+        setStats({
+          totalReferrals: referrals.length,
+          activeReferrals: activeRefs.length,
+          discountedTransactionsRemaining: Math.max(0, 9 - referrals.length * 3),
+          volumeRemaining: Math.max(0, 10000 - referrals.reduce((sum, r) => sum + (r.volume_used || 0), 0)),
+          totalSaved: totalSaved
+        });
+
+        // Format referral history
+        setReferralHistory(referrals.map(r => ({
+          id: r.id,
+          username: r.referred?.full_name
+            ? r.referred.full_name.slice(0, 4) + '***'
+            : (r.referred?.email?.slice(0, 4) + '***' || 'user***'),
+          status: r.status === 'completed' ? 'Active' : 'Pending',
+          date: new Date(r.created_at).toISOString().split('T')[0],
+          firstTransaction: r.first_transaction_amount || 0
+        })));
+      } else {
+        // No referrals yet - show empty state
+        setStats({
+          totalReferrals: 0,
+          activeReferrals: 0,
+          discountedTransactionsRemaining: 9,
+          volumeRemaining: 10000,
+          totalSaved: 0
+        });
+        setReferralHistory([]);
+      }
 
     } catch (err) {
       console.error('Error loading referral data:', err);

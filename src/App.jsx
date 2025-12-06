@@ -24,6 +24,7 @@ import Referral from './pages/Referral';
 import Support from './pages/Support';
 import Premium from './pages/Premium';
 import Trust from './pages/Trust';
+import Terms from './pages/Terms';
 import Quests from './components/gamification/Quests';
 
 // Mock createPageUrl function
@@ -43,6 +44,7 @@ const pageUrlMap = {
   Support: '/support',
   Premium: '/premium',
   Trust: '/trust',
+  Terms: '/terms',
   Quests: '/quests',
 };
 
@@ -143,6 +145,12 @@ function AnimatedRoutes() {
         <Route
           path={window.createPageUrl('Trust')}
           element={<Layout><Trust /></Layout>}
+        />
+
+        {/* Terms of Service (public) */}
+        <Route
+          path={window.createPageUrl('Terms')}
+          element={<Layout><Terms /></Layout>}
         />
 
         {/* Quests page (protected) */}

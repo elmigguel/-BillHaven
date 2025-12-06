@@ -1,315 +1,222 @@
-# START HERE - NEXT SESSION QUICK START
+# BILLHAVEN - START HERE (Nieuwe Sessie)
 
-**Date:** 2025-11-29 EOD
-**Context Budget:** 7% (CRITICAL - Use this guide for fast recovery)
-
----
-
-## READ THESE 3 FILES (IN ORDER)
-
-**Step 1: Quick Overview (2 minutes)**
-Read: `/home/elmigguel/BillHaven/CONTEXT_SNAPSHOT.md`
-- TL;DR of project status
-- Wallet addresses (CRITICAL)
-- What was built today
-- Next priorities
-
-**Step 2: Complete Daily Report (10 minutes)**
-Read: `/home/elmigguel/BillHaven/DAILY_REPORT_2025-11-29_COMPLETE_EOD.md`
-- All 4 sessions documented
-- TON integration details (1,793 lines)
-- 5-agent research findings
-- Security gaps identified
-- Implementation roadmap
-
-**Step 3: Master Implementation Plan (15 minutes)**
-Read: `/home/elmigguel/.claude/plans/delightful-wiggling-tarjan.md`
-- Bitcoin integration strategy (WBTC + Lightning + Native)
-- Auto-payment verification (Triple Confirmation Pattern)
-- User decisions and preferences
-- Complete architecture design
-- Week-by-week implementation plan
+**Datum:** 2025-12-06
+**Status:** 85% Production Ready (database nog niet gefixt)
+**Live URL:** https://billhaven.vercel.app
 
 ---
 
-## TODAY'S WORK SUMMARY (FOR QUICK SCAN)
+## EERSTE ACTIE: SCAN ALLES MET AGENTS
 
-### 4 Sessions, ~12 hours, 3,486 lines of code:
+Bij het starten van een nieuwe sessie, voer ALTIJD eerst deze scan uit:
 
-**Session 1: Bug Fixes**
-- 7 critical crashes fixed
-- Production stability achieved
-- ErrorBoundary enhanced
-
-**Session 2: TON Integration**
-- 1,793 lines of TON code
-- TonConnect 2.0 wallet integration
-- Complete payment UI
-- Smart contract in Tact language
-- 4x cheaper fees than Polygon
-
-**Session 3: 5-Agent Research**
-- Bitcoin: WBTC + Lightning + Native Multisig
-- Auto-release: Triple Confirmation Pattern
-- Security: 3 critical gaps found
-- Cost: $0 monthly (only per-transaction)
-- Philosophy: "From the People, For the People"
-
-**Session 4: Verification**
-- Build: SUCCESS (1,861 KB)
-- All systems operational
-- Ready for V3 development
-
----
-
-## CRITICAL SECURITY ISSUE (BLOCKER)
-
-**FOUND:** 3 major security gaps in current V2 contract
-
-1. **No hold period** → ACH reversal fraud possible
-2. **No payment method blocking** → PayPal chargeback fraud
-3. **No velocity limits** → Unlimited fraud scaling
-
-**SOLUTION:** Must build Smart Contract V3 BEFORE mainnet deployment
-
-**IMPACT:** Cannot launch to mainnet with current V2 (too risky)
-
----
-
-## NEXT PRIORITY: SMART CONTRACT V3
-
-### What V3 Needs:
-
-**Multi-Confirmation System:**
 ```
-1. Payer confirms: "I paid" + screenshot + reference
-2. Provider verifies: Mollie/Stripe webhook confirms
-3. Hold period: 3 days (bank), 24h (iDEAL), 1h (cash)
-4. Auto-release: After all confirmations + hold period
-```
+Lanceer 3 Explore agents om ALLES te scannen:
 
-**Security Additions:**
-- Payment method risk classification
-- Hold period enforcement
-- Velocity limits for new users
-- Reference number matching
-- Oracle signature verification
-
-**Estimated Time:** 2-3 days of focused development
-
-**Priority:** CRITICAL - Required before ANY mainnet deployment
-
----
-
-## CURRENT PROJECT STATUS
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Frontend | 100% ✅ | All features complete |
-| TON Integration | 100% ✅ | 1,793 lines, ready to deploy |
-| Bug Fixes | 100% ✅ | All 7 crashes fixed |
-| V2 Contract | DEPLOYED ✅ | Testnet only |
-| V3 Contract | 0% ⏳ | CRITICAL priority |
-| Security | GAPS 🔴 | V3 required |
-| Mainnet Deploy | BLOCKED 🔴 | V3 security first |
-
-**Overall:** 60% complete (features done, security pending)
-
----
-
-## WALLET INFO (COPY-PASTE READY)
-
-**Deployer Wallet:**
-```
-Address: 0x79fd43109b6096f892706B16f9f750fcaFe5C5d2
-Private Key: See .env line 27
-Polygon Balance: 1.0 POL (READY)
-Status: Can deploy V3 to Polygon immediately after built
-```
-
-**Fee Wallet:**
-```
-Address: 0x596b95782d98295283c5d72142e477d92549cde3
-Purpose: Receives 4.4% platform fee
-```
-
-**Test User Wallet:**
-```
-Address: 0x39b18e4a437673e0156f16dcf5fa4557ba9ab669
-Polygon Balance: 2.404 POL
-Purpose: First mainnet transaction testing
+1. CODE EXPERT: Scan src/, check alle imports, routes, en component structuur
+2. DATABASE EXPERT: Check alle services voor .from('table') calls, vergelijk met echte Supabase tabellen
+3. BUILD EXPERT: Run npm run build, check voor errors en warnings
 ```
 
 ---
 
-## QUICK COMMAND REFERENCE
+## KRITIEKE ACTIES (NIET KLAAR)
 
-**Build:**
+### 1. DATABASE FIX (KRITIEK!)
+**Status:** SQL script gemaakt, NIET uitgevoerd
+
+**Wat te doen:**
+1. Open Supabase: https://supabase.com/dashboard/project/bldjdctgjhtucyxqhwpc
+2. Ga naar SQL Editor
+3. Open bestand: `/home/elmigguel/BillHaven/CRITICAL_DATABASE_FIX.sql`
+4. Kopieer HELE script
+5. Plak in SQL Editor
+6. Klik "Run"
+
+**Dit script maakt:**
+- 10 nieuwe tabellen (user_reputations, user_reviews, user_quests, user_streaks, chat_rooms, chat_messages, message_reports, invoice_factoring, factoring_documents, premium_subscriptions)
+- 6 RPC functies (is_admin, add_user_xp, add_user_badge, increment_reputation_field, increment_referral_balance, get_user_xp_rank)
+- Indexes voor performance
+- RLS policies voor security
+
+### 2. INVOICE FACTORING UI (ONTBREEKT)
+**Status:** Service 100% compleet, GEEN UI pagina
+
+**Wat te doen:**
+- Maak `/src/pages/InvoiceFactoring.jsx`
+- Marketplace voor verkoop/koop van facturen
+- Document viewer voor gegenereerde agreements
+- Voeg route toe aan App.jsx
+
+---
+
+## WAT WEL KLAAR IS
+
+| Component | Status |
+|-----------|--------|
+| App.jsx routing (incl. Terms) | ✅ Fixed |
+| PWA manifest.json | ✅ Fixed |
+| Referral.jsx (real data) | ✅ Fixed |
+| Layout.jsx footer + disclaimers | ✅ Complete |
+| Terms.jsx Section 10 (Tax) | ✅ Complete |
+| Home.jsx marketing copy | ✅ Complete |
+| Smart Contract V3 | ✅ Live on Polygon |
+| 12 Blockchain support | ✅ Complete |
+| Trust indicators | ✅ Complete |
+| Premium tiers UI | ✅ Complete |
+
+---
+
+## TECHNISCHE DETAILS
+
+### Smart Contract
+```
+Address: 0x8beED27aA6d28FE42a9e792d81046DD1337a8240
+Network: Polygon Mainnet
+Tests: 60/60 passing
+```
+
+### Tech Stack
+- Frontend: React 18 + Vite + Tailwind + Framer Motion
+- Backend: Supabase (PostgreSQL + Auth)
+- Blockchain: 12 chains (EVM x6, Solana, Lightning, TON, Tron, Bitcoin, Zcash)
+- Wallet: RainbowKit + WalletConnect
+
+### Key URLs
+- **Live:** https://billhaven.vercel.app
+- **Supabase:** https://supabase.com/dashboard/project/bldjdctgjhtucyxqhwpc
+- **GitHub:** https://github.com/elmigguel/-BillHaven
+- **Contract:** https://polygonscan.com/address/0x8beED27aA6d28FE42a9e792d81046DD1337a8240
+
+---
+
+## PROJECT STRUCTUUR
+
+```
+/home/elmigguel/BillHaven/
+├── src/
+│   ├── pages/
+│   │   ├── Home.jsx          # Landing page
+│   │   ├── Dashboard.jsx     # User dashboard
+│   │   ├── Premium.jsx       # Premium tiers
+│   │   ├── Trust.jsx         # Trust dashboard
+│   │   ├── Terms.jsx         # Terms + Tax Section 10
+│   │   ├── Referral.jsx      # Referral program (fixed)
+│   │   └── ...
+│   ├── services/
+│   │   ├── invoiceFactoringService.js  # 100% complete
+│   │   ├── reputationService.js        # Needs DB tables
+│   │   ├── questService.js             # Needs DB tables
+│   │   ├── streakService.js            # Needs DB tables
+│   │   ├── chatService.js              # Needs DB tables
+│   │   └── premiumService.js           # Needs DB tables
+│   ├── components/
+│   │   ├── gamification/     # Quests, Streaks, Leaderboard
+│   │   ├── reputation/       # User trust badges
+│   │   ├── chat/             # Trade chat
+│   │   └── premium/          # Premium tier cards
+│   └── contexts/
+│       ├── AuthContext.jsx   # Uses is_admin() RPC
+│       └── ThemeContext.jsx  # Dark/Light mode
+├── contracts/
+│   └── BillHavenEscrowV3.sol # Deployed contract
+├── CRITICAL_DATABASE_FIX.sql # RUN THIS IN SUPABASE!
+└── public/
+    └── manifest.json         # PWA config (fixed)
+```
+
+---
+
+## COMMANDS
+
 ```bash
+# Development
 cd /home/elmigguel/BillHaven
+npm run dev
+
+# Build
 npm run build
-```
 
-**Deploy V3 (after built):**
-```bash
-cd /home/elmigguel/BillHaven
-./scripts/deploy-all-networks.sh
-# Select Polygon only (we have 1.0 POL)
-```
+# Deploy (auto via Vercel)
+git add . && git commit -m "message" && git push origin main
 
-**Check wallet balance:**
-```bash
-# Check Polygon mainnet
-cast balance 0x79fd43109b6096f892706B16f9f750fcaFe5C5d2 --rpc-url https://polygon-rpc.com
+# Smart contract tests
+npx hardhat test
 ```
 
 ---
 
-## IMPLEMENTATION ROADMAP
+## COMPETITIVE POSITION
 
-### Week 1: Smart Contract V3 (CURRENT PRIORITY)
-- [ ] Copy V2 to V3
-- [ ] Add ConfirmationStatus enum
-- [ ] Add multi-confirmation functions
-- [ ] Add hold period logic
-- [ ] Add payment method tracking
-- [ ] Deploy to testnet
-- [ ] End-to-end testing
+**BillHaven vs Competition:**
+| Platform | Features | Chains |
+|----------|----------|--------|
+| **BillHaven** | 9/9 (100%) | 12 |
+| Binance P2P | 6/9 (67%) | 2 |
+| Paxful | 3/9 (33%) | 2 |
+| LocalBitcoins | 1/9 (11%) | 1 |
 
-### Week 2-4: Bitcoin Lightning
-- [ ] Sign up Voltage.cloud (free)
-- [ ] Create Lightning node
-- [ ] Build lightningPayment.js
-- [ ] Test invoice generation
-- [ ] Add to UI
-
-### Week 5-6: Mollie iDEAL Integration
-- [ ] Create Mollie account
-- [ ] Set up webhook (Supabase Edge Function)
-- [ ] Implement reference matching
-- [ ] Test auto-release flow
-
-### Week 7-8: Advanced Features
-- [ ] Screenshot OCR (Tesseract.js)
-- [ ] Reputation system
-- [ ] Native Bitcoin 2-of-3 multisig
+**Unique Features (niemand heeft dit):**
+1. Invoice Factoring ($7.6T market)
+2. Tax Documentation (4 documents)
+3. 11 Verification Badges
+4. 3-Tier Referrals (40%/10%/5%)
+5. $50K SAFU Insurance Fund
+6. 20+ Quest System
+7. NO-KYC (wallet-only)
 
 ---
 
-## USER PREFERENCES (FROM RESEARCH)
+## VOLGENDE STAPPEN
 
-**Payment Providers:** Mollie + Stripe (both)
-**Bitcoin Support:** ALL methods (WBTC + Lightning + Native)
-**Auto-Release:** Triple Confirmation Pattern (safest)
-**Budget:** Free/minimal - decentralized, no KYC
-**Philosophy:** "From the People, For the People"
-
-**Quote for Frontend:**
-> "From the People, For the People"
-> Fully Decentralized • No KYC • Your Keys, Your Crypto
-> Pay with Bitcoin Lightning ($0.001), TON ($0.025), or Polygon ($0.10)
+1. **DATABASE FIX** - Run CRITICAL_DATABASE_FIX.sql in Supabase
+2. **VERIFY** - Test of alle features werken
+3. **INVOICE FACTORING UI** - Maak marketplace pagina
+4. **BUILD & DEPLOY** - npm run build && git push
+5. **LAUNCH** - Ready for YouTube/Reddit/Twitter
 
 ---
 
-## FILES LOCATION GUIDE
+## SCAN PROMPT VOOR NIEUWE SESSIE
 
-### Critical Documentation:
-```
-/home/elmigguel/BillHaven/DAILY_REPORT_2025-11-29_COMPLETE_EOD.md
-/home/elmigguel/BillHaven/CONTEXT_SNAPSHOT.md
-/home/elmigguel/BillHaven/SESSION_SUMMARY.md
-/home/elmigguel/.claude/plans/delightful-wiggling-tarjan.md
-```
+Kopieer dit naar de nieuwe chat:
 
-### Smart Contracts:
 ```
-/home/elmigguel/BillHaven/contracts/BillHavenEscrowV2.sol (current)
-/home/elmigguel/BillHaven/contracts/BillHavenEscrowV3.sol (to be created)
-/home/elmigguel/BillHaven/ton-contracts/billhaven_escrow.tact (TON)
-```
+Lees eerst /home/elmigguel/BillHaven/START_HERE_NEXT_SESSION.md
 
-### TON Integration:
-```
-/home/elmigguel/BillHaven/src/contexts/TonWalletContext.jsx (232 lines)
-/home/elmigguel/BillHaven/src/components/bills/TonPaymentFlow.jsx (649 lines)
-/home/elmigguel/BillHaven/src/services/tonPayment.js (225 lines)
-```
+Lanceer dan 3 expert agents om ALLES te scannen:
 
-### Key Services:
-```
-/home/elmigguel/BillHaven/src/services/escrowService.js (EVM)
-/home/elmigguel/BillHaven/src/contexts/WalletContext.jsx (EVM wallet)
-/home/elmigguel/BillHaven/src/utils/dateUtils.js (safe dates)
+1. EXPLORE AGENT (Code): 
+   - Scan src/ folder structuur
+   - Check alle imports in App.jsx
+   - Zoek naar TODO comments of mock data
+   - Check of alle routes werken
+
+2. EXPLORE AGENT (Database):
+   - Zoek alle .from('table') calls in src/services/
+   - Lijst alle tabellen die code verwacht
+   - Check of deze matchen met Supabase schema
+   - Zoek naar RPC function calls
+
+3. EXPLORE AGENT (Build):
+   - Run npm run build
+   - Check voor errors en warnings
+   - Verify dist/ folder output
+
+Rapporteer alle problemen en wat nog niet klaar is.
+
+KRITIEK: Check of CRITICAL_DATABASE_FIX.sql al is uitgevoerd in Supabase!
 ```
 
 ---
 
-## WHAT TO BUILD NEXT
+## BELANGRIJK
 
-**Path A: Security First (RECOMMENDED)**
-1. Build Smart Contract V3 with multi-confirmation
-2. Test on testnet
-3. Deploy to Polygon mainnet
-4. Estimated: 2-3 days
-
-**Path B: TON Deployment**
-1. Deploy TON contract to testnet
-2. Test TON payments
-3. Parallel to V3 development
-4. Estimated: 4-6 hours
-
-**Path C: Payment Integration**
-1. Set up Mollie account
-2. Build webhook endpoint
-3. Test iDEAL payments
-4. Estimated: 1-2 days
-
-**RECOMMENDATION:** Path A → Security is critical for P2P platforms
+- **Database is NIET gefixt** - De SQL script moet nog worden uitgevoerd
+- **Invoice Factoring UI ontbreekt** - Service werkt, maar geen pagina
+- **Build werkt** - 9008 modules, geen errors
+- **Vercel deploy werkt** - Auto-deploy op git push
 
 ---
 
-## QUICK WINS AVAILABLE
-
-**Low-Hanging Fruit (1-2 hours each):**
-1. Deploy TON contract to testnet
-2. Set up Voltage.cloud Lightning node
-3. Create Mollie account and get API keys
-4. Test reference number system
-5. Build payment method selector UI
-
-**These can be done while thinking about V3 architecture**
-
----
-
-## BUILD STATUS
-
-```
-Last Build: SUCCESS
-Date: 2025-11-29 evening
-Bundle: 1,861 KB
-Modules: 2,696
-Errors: 0
-Warnings: 1 (chunk size - can ignore)
-Time: 32.77s
-```
-
-**Includes:** React + Vite + TON SDK + ethers.js + All dependencies
-
----
-
-## REMEMBER
-
-**Context is at 7%** - Next session MUST start with these files:
-1. CONTEXT_SNAPSHOT.md (quick overview)
-2. DAILY_REPORT_2025-11-29_COMPLETE_EOD.md (complete details)
-3. Master plan: /home/elmigguel/.claude/plans/delightful-wiggling-tarjan.md
-
-**Don't waste time asking "what should I do?"** - It's all documented.
-
-**Security First** - V3 is required before mainnet launch.
-
-**Philosophy** - "From the People, For the People" - No KYC, fully decentralized, ultra-low fees.
-
----
-
-**READY TO BUILD V3? Let's go! 🚀**
+*Laatst bijgewerkt: 2025-12-06 door Claude*
