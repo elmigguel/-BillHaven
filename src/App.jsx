@@ -25,6 +25,7 @@ import Support from './pages/Support';
 import Premium from './pages/Premium';
 import Trust from './pages/Trust';
 import Terms from './pages/Terms';
+import InvoiceFactoring from './pages/InvoiceFactoring';
 import Quests from './components/gamification/Quests';
 
 // Mock createPageUrl function
@@ -45,6 +46,7 @@ const pageUrlMap = {
   Premium: '/premium',
   Trust: '/trust',
   Terms: '/terms',
+  InvoiceFactoring: '/invoice-factoring',
   Quests: '/quests',
 };
 
@@ -151,6 +153,12 @@ function AnimatedRoutes() {
         <Route
           path={window.createPageUrl('Terms')}
           element={<Layout><Terms /></Layout>}
+        />
+
+        {/* Invoice Factoring Marketplace (public, but actions need login) */}
+        <Route
+          path={window.createPageUrl('InvoiceFactoring')}
+          element={<Layout><InvoiceFactoring /></Layout>}
         />
 
         {/* Quests page (protected) */}

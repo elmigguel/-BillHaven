@@ -170,6 +170,71 @@ ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
 ALTER TABLE profiles
 ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE;
 
+-- 12. Discount Usage (referral discounts used)
+CREATE TABLE IF NOT EXISTS discount_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  referral_id UUID,
+  bill_id UUID,
+  discount_amount DECIMAL(20,2) NOT NULL,
+  original_fee DECIMAL(20,2),
+  final_fee DECIMAL(20,2),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 13. Referral Earnings (commission tracking)
+CREATE TABLE IF NOT EXISTS referral_earnings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  referred_id UUID REFERENCES auth.users(id),
+  bill_id UUID,
+  tier INTEGER DEFAULT 1,
+  commission_rate DECIMAL(5,2),
+  platform_fee DECIMAL(20,2),
+  commission_amount DECIMAL(20,2),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'cancelled')),
+  paid_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 14. Dispute Evidence (for chat disputes)
+CREATE TABLE IF NOT EXISTS dispute_evidence (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  bill_id UUID,
+  room_id UUID REFERENCES chat_rooms(id),
+  submitter_id UUID REFERENCES auth.users(id),
+  evidence_type TEXT CHECK (evidence_type IN ('screenshot', 'document', 'message_archive', 'other')),
+  file_url TEXT,
+  description TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 15. User Trust Profiles (advanced trust scoring)
+CREATE TABLE IF NOT EXISTS user_trust_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  trust_level TEXT DEFAULT 'new' CHECK (trust_level IN ('new', 'basic', 'verified', 'trusted', 'elite')),
+  verification_status JSONB DEFAULT '{}'::jsonb,
+  risk_score INTEGER DEFAULT 50,
+  trade_limits JSONB DEFAULT '{"daily": 1000, "weekly": 5000, "monthly": 20000}'::jsonb,
+  kyc_status TEXT DEFAULT 'none' CHECK (kyc_status IN ('none', 'pending', 'verified', 'rejected')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 16. Admin Audit Log (for admin actions)
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id UUID REFERENCES auth.users(id),
+  action TEXT NOT NULL,
+  target_type TEXT,
+  target_id UUID,
+  details JSONB DEFAULT '{}'::jsonb,
+  ip_address TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================
 -- PART 2: RPC FUNCTIONS (6 functions)
 -- ============================================
@@ -286,6 +351,11 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_room_id ON chat_messages(room_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_factoring_seller_id ON invoice_factoring(seller_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_factoring_status ON invoice_factoring(status);
 CREATE INDEX IF NOT EXISTS idx_premium_subscriptions_user_id ON premium_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_discount_usage_user_id ON discount_usage(user_id);
+CREATE INDEX IF NOT EXISTS idx_referral_earnings_referrer_id ON referral_earnings(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_dispute_evidence_bill_id ON dispute_evidence(bill_id);
+CREATE INDEX IF NOT EXISTS idx_user_trust_profiles_user_id ON user_trust_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_admin_id ON admin_audit_log(admin_id);
 
 -- ============================================
 -- PART 4: ROW LEVEL SECURITY (RLS)
@@ -354,6 +424,32 @@ CREATE POLICY "factoring_documents_select" ON factoring_documents FOR SELECT USI
 
 DROP POLICY IF EXISTS "premium_subscriptions_all" ON premium_subscriptions;
 CREATE POLICY "premium_subscriptions_all" ON premium_subscriptions FOR ALL USING (auth.uid() = user_id OR is_admin());
+
+-- RLS for new tables
+ALTER TABLE discount_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_earnings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dispute_evidence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_trust_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_audit_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "discount_usage_all" ON discount_usage;
+CREATE POLICY "discount_usage_all" ON discount_usage FOR ALL USING (auth.uid() = user_id OR is_admin());
+
+DROP POLICY IF EXISTS "referral_earnings_select" ON referral_earnings;
+CREATE POLICY "referral_earnings_select" ON referral_earnings FOR SELECT USING (auth.uid() = referrer_id OR is_admin());
+
+DROP POLICY IF EXISTS "dispute_evidence_select" ON dispute_evidence;
+CREATE POLICY "dispute_evidence_select" ON dispute_evidence FOR SELECT USING (auth.uid() = submitter_id OR is_admin());
+DROP POLICY IF EXISTS "dispute_evidence_insert" ON dispute_evidence;
+CREATE POLICY "dispute_evidence_insert" ON dispute_evidence FOR INSERT WITH CHECK (auth.uid() = submitter_id);
+
+DROP POLICY IF EXISTS "user_trust_profiles_select" ON user_trust_profiles;
+CREATE POLICY "user_trust_profiles_select" ON user_trust_profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "user_trust_profiles_update" ON user_trust_profiles;
+CREATE POLICY "user_trust_profiles_update" ON user_trust_profiles FOR UPDATE USING (auth.uid() = user_id OR is_admin());
+
+DROP POLICY IF EXISTS "admin_audit_log_admin" ON admin_audit_log;
+CREATE POLICY "admin_audit_log_admin" ON admin_audit_log FOR ALL USING (is_admin());
 
 -- ============================================
 -- DONE! Verify with:

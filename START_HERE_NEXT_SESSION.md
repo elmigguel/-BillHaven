@@ -1,7 +1,7 @@
 # BILLHAVEN - START HERE (Nieuwe Sessie)
 
 **Datum:** 2025-12-06
-**Status:** 85% Production Ready (database nog niet gefixt)
+**Status:** 90% Production Ready (database SQL script klaar, moet worden uitgevoerd)
 **Live URL:** https://billhaven.vercel.app
 
 ---
@@ -39,14 +39,15 @@ Lanceer 3 Explore agents om ALLES te scannen:
 - Indexes voor performance
 - RLS policies voor security
 
-### 2. INVOICE FACTORING UI (ONTBREEKT)
-**Status:** Service 100% compleet, GEEN UI pagina
+### 2. INVOICE FACTORING UI
+**Status:** ✅ COMPLEET
 
-**Wat te doen:**
-- Maak `/src/pages/InvoiceFactoring.jsx`
-- Marketplace voor verkoop/koop van facturen
-- Document viewer voor gegenereerde agreements
-- Voeg route toe aan App.jsx
+**Wat is gedaan:**
+- `/src/pages/InvoiceFactoring.jsx` - 480+ lines aangemaakt
+- Route toegevoegd: `/invoice-factoring`
+- Marketplace view voor verkoop/koop van facturen
+- Create listing modal
+- Document download sectie
 
 ---
 
@@ -54,7 +55,7 @@ Lanceer 3 Explore agents om ALLES te scannen:
 
 | Component | Status |
 |-----------|--------|
-| App.jsx routing (incl. Terms) | ✅ Fixed |
+| App.jsx routing (incl. Terms + InvoiceFactoring) | ✅ Fixed |
 | PWA manifest.json | ✅ Fixed |
 | Referral.jsx (real data) | ✅ Fixed |
 | Layout.jsx footer + disclaimers | ✅ Complete |
@@ -64,6 +65,8 @@ Lanceer 3 Explore agents om ALLES te scannen:
 | 12 Blockchain support | ✅ Complete |
 | Trust indicators | ✅ Complete |
 | Premium tiers UI | ✅ Complete |
+| **InvoiceFactoring.jsx** | ✅ NEW - 480+ lines |
+| **CRITICAL_DATABASE_FIX.sql** | ✅ 16 tables + 6 RPC functions |
 
 ---
 
